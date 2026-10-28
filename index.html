@@ -66,6 +66,17 @@ text-align:center;padding:32px 24px;gap:14px}
 .viewer .vbar b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
 .stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
 .stage video,.stage img{max-width:100%;max-height:100%}
+.pl{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000}
+.pl video{max-width:100%;max-height:100%;width:100%}
+.pl-big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;
+background:rgba(0,0,0,.55);color:#fff;font-size:30px;display:grid;place-items:center;padding-left:6px}
+.pl-wait{position:absolute;left:50%;top:50%;margin:-17px 0 0 -17px}
+.pl-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;padding:14px 12px 12px;
+background:linear-gradient(transparent,rgba(0,0,0,.75));opacity:0;transition:opacity .25s;pointer-events:none}
+.pl.show .pl-bar,.pl.paused .pl-bar{opacity:1;pointer-events:auto}
+.pl-btn{width:40px;height:40px;flex:none;color:#fff;font-size:18px;display:grid;place-items:center}
+.pl-time{color:#fff;font-size:13px;font-variant-numeric:tabular-nums;flex:none}
+.pl-seek{flex:1;min-width:0;accent-color:var(--accent);height:28px}
 .prep{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--dim);text-align:center;padding:24px}
 .progress{width:220px;height:6px;border-radius:3px;background:#222;overflow:hidden}
 .progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
@@ -463,6 +474,62 @@ async function saveFile(btn, url, name, type, size) {
   }
 }
 
+// A video player with our own controls. The phone's built-in controls could miss a tap
+// on pause; here tapping the video always plays/pauses, with a clear button and seek bar.
+function player(src) {
+  const video = el("video", {playsinline: "", "webkit-playsinline": "", autoplay: "", preload: "auto", src});
+  const big = el("button", {class: "pl-big", "aria-label": "Play"}, "▶");
+  const btn = el("button", {class: "pl-btn", "aria-label": "Play/pause"}, "❚❚");
+  const cur = el("span", {class: "pl-time"}, "0:00");
+  const dur = el("span", {class: "pl-time"}, "0:00");
+  const seek = el("input", {type: "range", class: "pl-seek", min: "0", max: "1000", value: "0", step: "1"});
+  const full = el("button", {class: "pl-btn", "aria-label": "Full screen"}, "⤢");
+  const wait = el("div", {class: "spin pl-wait hidden"});
+  const bar = el("div", {class: "pl-bar"}, btn, cur, seek, dur, full);
+  const box = el("div", {class: "pl"}, video, wait, big, bar);
+  let seeking = false, hideT = null;
+  const t = s => fmtLen(s || 0) || "0:00";
+  const paint = () => {
+    const p = video.paused || video.ended;
+    btn.textContent = p ? "▶" : "❚❚";
+    big.classList.toggle("hidden", !p);
+    box.classList.toggle("paused", p);
+  };
+  const showBar = () => {
+    box.classList.add("show");
+    clearTimeout(hideT);
+    if (!video.paused) hideT = setTimeout(() => box.classList.remove("show"), 2500);
+  };
+  const toggle = () => {
+    if (video.paused || video.ended) { video.play().catch(() => {}); } else { video.pause(); }
+    showBar();
+  };
+  box.addEventListener("click", e => { e.preventDefault(); toggle(); });   // anywhere on the player
+  bar.addEventListener("click", e => e.stopPropagation());                 // except the bar
+  big.addEventListener("click", e => { e.stopPropagation(); toggle(); });
+  btn.addEventListener("click", e => { e.stopPropagation(); toggle(); });
+  ["play", "pause", "playing", "ended"].forEach(ev => video.addEventListener(ev, () => { paint(); showBar(); }));
+  video.addEventListener("waiting", () => wait.classList.remove("hidden"));
+  ["playing", "canplay", "pause", "error"].forEach(ev => video.addEventListener(ev, () => wait.classList.add("hidden")));
+  video.addEventListener("loadedmetadata", () => { dur.textContent = t(video.duration); });
+  video.addEventListener("timeupdate", () => {
+    cur.textContent = t(video.currentTime);
+    if (!seeking && video.duration) seek.value = Math.round(video.currentTime / video.duration * 1000);
+  });
+  seek.addEventListener("input", () => {
+    seeking = true; showBar();
+    if (video.duration) { video.currentTime = seek.value / 1000 * video.duration; cur.textContent = t(video.currentTime); }
+  });
+  seek.addEventListener("change", () => { seeking = false; });
+  full.addEventListener("click", e => {
+    e.stopPropagation();
+    if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();       // iPhone
+    else if (box.requestFullscreen) box.requestFullscreen().catch(() => {});
+  });
+  paint(); showBar();
+  return {box, video};
+}
+
 function view(c) {
   const stage = el("div", {class: "stage"});
   const foot = el("div", {class: "vfoot"});
@@ -478,38 +545,35 @@ function view(c) {
 
   if (c.kind !== "video") {
     stage.append(el("img", {src: saved.url + c.original, alt: c.title}));
-    const save = el("button", {}, "Save to phone");
+    const save = el("button", {}, "Download to device");
     save.onclick = () => saveFile(save, saved.url + c.original, fileName, imgType, c.size);
     foot.append(save);
     return;
   }
 
-  // buttons: the phone version (small, plays everywhere) and the full-quality original
-  const savePhone = el("button", {}, "Save to phone");
-  savePhone.onclick = async () => {
-    savePhone.disabled = true;
+  // one button: download the phone version (plays everywhere, saves to Photos)
+  const save = el("button", {}, "Download to device");
+  save.onclick = async () => {
+    save.disabled = true;
     try {
-      await phoneVersion(c, (st, p) => { savePhone.textContent = "Preparing " + Math.round(p * 100) + "%"; }, alive);
-      savePhone.disabled = false; savePhone.textContent = "Save to phone";
-      saveFile(savePhone, saved.url + c.play, c.title + ".mp4", "video/mp4");
+      await phoneVersion(c, (st, p) => { save.textContent = "Preparing " + Math.round(p * 100) + "%"; }, alive);
+      save.disabled = false; save.textContent = "Download to device";
+      saveFile(save, saved.url + c.play, c.title + ".mp4", "video/mp4");
     } catch (e) {
-      savePhone.disabled = false; savePhone.textContent = "Save to phone";
+      save.disabled = false; save.textContent = "Download to device";
       if (e.message !== "closed") toast("Couldn't make a phone version of this clip.");
     }
   };
-  const saveOrig = el("button", {class: "ghost"}, "Original · " + fmtSize(c.size));
-  saveOrig.onclick = () => saveFile(saveOrig, saved.url + c.original, fileName,
-                                     /\.mkv$/i.test(fileName) ? "video/x-matroska" : "video/mp4", c.size);
-  foot.append(savePhone, saveOrig);
+  foot.append(save);
 
   const playOriginal = () => {
-    const v = el("video", {controls: "", playsinline: "", autoplay: "", preload: "auto", src: saved.url + c.original});
+    const {box: pl, video: v} = player(saved.url + c.original);
     v.addEventListener("error", () => {
       stage.replaceChildren(el("div", {class: "prep"},
         el("span", {}, "This phone can't play the original file (its format, like AV1 or MKV, isn't supported here)."),
         el("button", {class: "big", onclick: playConverted}, "Play a phone version")));
     });
-    stage.replaceChildren(v);
+    stage.replaceChildren(pl);
   };
   const playConverted = () => {
     const bar = el("i"); const label = el("span", {}, "Getting it ready for your phone...");
@@ -522,7 +586,7 @@ function view(c) {
         "Getting it ready for your phone... " + Math.round(p * 100) + "%";
     }, alive).then(() => {
       if (!alive()) return;
-      stage.replaceChildren(el("video", {controls: "", playsinline: "", autoplay: "", preload: "auto", src: saved.url + c.play}));
+      stage.replaceChildren(player(saved.url + c.play).box);
     }).catch(e => {
       if (e.message !== "closed") label.textContent = "Couldn't make a phone version. Try the original.";
     });
