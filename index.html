@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0f0f12">
+<meta name="theme-color" content="#0e0e11">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,46 +14,87 @@
 <link rel="icon" href="icon-192.png">
 <title>Greedy Clips</title>
 <style>
-:root{--bg:#0f0f12;--card:#1a1a1f;--line:#2a2a31;--text:#f2f2f4;--dim:#9a9aa6;--accent:#e5484d;
---accent2:#ff6b6f;--ok:#3dd68c;--safe-top:env(safe-area-inset-top);--safe-bot:env(safe-area-inset-bottom)}
+:root{--bg:#0e0e11;--card:#17171c;--card2:#1f1f26;--line:#2a2a33;--text:#f4f4f6;--dim:#9b9ba7;--faint:#6c6c78;
+--accent:#e5484d;--accent2:#ff6b6f;--accent-soft:rgba(229,72,77,.14);--ok:#3dd68c;--gold:#ffd166;
+--safe-top:env(safe-area-inset-top);--safe-bot:env(safe-area-inset-bottom)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);
-font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{overflow-x:hidden;max-width:100%}
 body{min-height:100vh;padding-bottom:calc(16px + var(--safe-bot))}
-button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-.top{position:sticky;top:0;z-index:5;background:rgba(15,15,18,.92);backdrop-filter:blur(12px);
--webkit-backdrop-filter:blur(12px);padding:calc(10px + var(--safe-top)) 16px 0;border-bottom:1px solid var(--line)}
-.bar{display:flex;align-items:center;gap:10px;min-height:40px}
-.logo{width:30px;height:30px;border-radius:8px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input{font:inherit;color:inherit}
+svg.i{width:20px;height:20px;flex:none;display:block}
+.hidden{display:none!important}
+
+/* header */
+.top{position:sticky;top:0;z-index:5;background:rgba(14,14,17,.9);backdrop-filter:blur(14px);
+-webkit-backdrop-filter:blur(14px);padding:calc(10px + var(--safe-top)) 16px 0;border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:10px;min-height:42px}
+.logo{width:32px;height:32px;border-radius:9px}
 .pc{flex:1;min-width:0}
-.pc b{display:block;font-size:16px}
-.pc span{display:block;color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.icon-btn{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--dim)}
-.icon-btn:active{background:var(--card)}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{flex:none;padding:7px 13px;border-radius:999px;background:var(--card);color:var(--dim);font-size:14px;white-space:nowrap}
-.tab.on{background:var(--accent);color:#fff}
-.tab small{opacity:.75;margin-left:4px}
-.games{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
-.games::-webkit-scrollbar{display:none}
-.game{flex:none;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;
+.pc b{display:block;font-size:16px;letter-spacing:-.01em}
+.pc span{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.dot.rec{background:var(--accent);animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.35}}
+.icon-btn{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;color:var(--dim);flex:none}
+.icon-btn:active{background:var(--card2)}
+
+/* capture bar (same buttons as the PC) */
+.capture{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;padding:12px 0 4px}
+.cap{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;border-radius:12px;
+background:var(--card);font-size:12px;font-weight:600;color:var(--text)}
+.cap svg.i{width:22px;height:22px}
+.cap.primary{background:var(--accent);color:#fff}
+.cap.live{background:var(--accent-soft);color:var(--accent2);box-shadow:inset 0 0 0 1px var(--accent)}
+.cap:active{transform:scale(.97)}
+.cap:disabled{opacity:.55}
+
+/* search + sort */
+.find{display:flex;gap:8px;padding:10px 0 2px}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:11px;padding:0 12px;height:40px;color:var(--faint)}
+.search input{flex:1;width:100%;min-width:0;border:0;outline:0;background:transparent;font-size:15px;color:var(--text)}
+.search input::placeholder{color:var(--faint)}
+.sortbtn{display:flex;align-items:center;gap:6px;background:var(--card);border-radius:11px;padding:0 12px;height:40px;color:var(--dim);font-size:13px;font-weight:600;white-space:nowrap}
+
+/* games + type tabs */
+.games,.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.games::-webkit-scrollbar,.tabs::-webkit-scrollbar{display:none}
+.games{padding:10px 0 2px}
+.game{flex:none;display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:10px;border:1px solid var(--line);
 color:var(--text);font-size:14px;font-weight:600;white-space:nowrap}
-.game.on{border-color:var(--accent);background:rgba(229,72,77,.14)}
-.game small{color:var(--dim);font-weight:400;margin-left:6px}
+.game.on{border-color:var(--accent);background:var(--accent-soft)}
+.game small,.tab small{font-weight:400;opacity:.7}
+.game svg.i{width:15px;height:15px;color:var(--gold)}
+.tabs{gap:6px;padding:10px 0}
+.tab{flex:none;padding:7px 14px;border-radius:999px;background:var(--card);color:var(--dim);font-size:14px;white-space:nowrap}
+.tab.on{background:var(--accent);color:#fff}
+.tab small{margin-left:4px}
+.summary{color:var(--faint);font-size:12px;padding:0 0 10px}
+
+/* clips */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:14px 16px}
-.clip{background:var(--card);border-radius:12px;overflow:hidden;text-align:left;width:100%}
-.thumb{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat}
+.day{grid-column:1/-1;color:var(--dim);font-size:13px;font-weight:600;margin:6px 0 -4px}
+.clip{position:relative;background:var(--card);border-radius:13px;overflow:hidden}
+.clip>.open{display:block;width:100%;text-align:left}
+.thumb{position:relative;aspect-ratio:16/9;background:#000}
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.len{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.75);border-radius:5px;padding:1px 6px;font-size:12px}
-.star{position:absolute;left:6px;top:4px;color:#ffd166;font-size:15px;text-shadow:0 1px 3px #000}
-.meta{padding:8px 10px 10px}
+.len{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.75);border-radius:5px;padding:1px 6px;font-size:12px;font-variant-numeric:tabular-nums}
+.star{position:absolute;left:6px;top:6px;color:var(--gold);filter:drop-shadow(0 1px 2px #000)}
+.star svg.i{width:16px;height:16px}
+.meta{padding:8px 34px 10px 10px}
 .meta b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meta span{color:var(--dim);font-size:12px}
-.day{grid-column:1/-1;color:var(--dim);font-size:13px;font-weight:600;margin:6px 0 -4px}
-.center{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+.clip .more{position:absolute;right:2px;bottom:4px;width:34px;height:34px;display:grid;place-items:center;color:var(--dim)}
+.clip .more svg.i{width:18px;height:18px}
+.empty{min-height:40vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--dim);text-align:center;padding:24px}
+.empty b{color:var(--text);font-size:17px}
+
+/* full-screen states */
+.center{min-height:75vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
 text-align:center;padding:32px 24px;gap:14px}
-.center h1{font-size:22px;margin:0}
+.center h1{font-size:22px;margin:0;letter-spacing:-.01em}
 .center p{color:var(--dim);margin:0;max-width:340px}
 .big{background:var(--accent);color:#fff;border-radius:12px;padding:13px 22px;font-weight:600;font-size:16px;min-width:220px}
 .big.ghost{background:var(--card);color:var(--text)}
@@ -61,32 +102,66 @@ text-align:center;padding:32px 24px;gap:14px}
 .steps li{margin:6px 0}
 .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
+
+/* viewer */
 .viewer{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
-.viewer .vbar{display:flex;align-items:center;gap:8px;padding:calc(8px + var(--safe-top)) 10px 8px}
-.viewer .vbar b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.vbar{display:flex;align-items:center;gap:4px;padding:calc(6px + var(--safe-top)) 6px 6px}
+.vbar .vt{flex:1;min-width:0;padding:0 4px}
+.vbar .vt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.vbar .vt span{display:block;color:var(--dim);font-size:12px}
+.vbar .icon-btn{color:var(--text)}
+.vbar .fav.on{color:var(--gold)}
 .stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
-.stage video,.stage img{max-width:100%;max-height:100%}
-.pl{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000}
-.pl video{max-width:100%;max-height:100%;width:100%}
-.pl-big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;
-background:rgba(0,0,0,.55);color:#fff;font-size:30px;display:grid;place-items:center;padding-left:6px}
-.pl-wait{position:absolute;left:50%;top:50%;margin:-17px 0 0 -17px}
-.pl-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;padding:14px 12px 12px;
-background:linear-gradient(transparent,rgba(0,0,0,.75));opacity:0;transition:opacity .25s;pointer-events:none}
-.pl.show .pl-bar,.pl.paused .pl-bar{opacity:1;pointer-events:auto}
-.pl-btn{width:40px;height:40px;flex:none;color:#fff;font-size:18px;display:grid;place-items:center}
-.pl-time{color:#fff;font-size:13px;font-variant-numeric:tabular-nums;flex:none}
-.pl-seek{flex:1;min-width:0;accent-color:var(--accent);height:28px}
+.stage>img{max-width:100%;max-height:100%}
 .prep{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--dim);text-align:center;padding:24px}
 .progress{width:220px;height:6px;border-radius:3px;background:#222;overflow:hidden}
 .progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
 .vfoot{display:flex;gap:10px;padding:10px 12px calc(12px + var(--safe-bot))}
-.vfoot a,.vfoot button{flex:1;text-align:center;background:var(--accent);border-radius:10px;padding:12px;color:#fff;text-decoration:none;font-weight:600}
-.vfoot button.ghost{background:#1c1c22;color:var(--text)}
+.vfoot button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card2);border-radius:12px;padding:13px;color:var(--text);font-weight:600}
+.vfoot button.main{background:var(--accent);color:#fff}
+.vfoot button:not(.main){flex:0 0 auto;padding:13px 16px}
+.vfoot button span{white-space:nowrap}
+.viewer~.toast,.menu~.toast{bottom:calc(92px + var(--safe-bot))}
 .vfoot button.ready{background:var(--ok);color:#06210f}
-.vfoot button:disabled{opacity:.7}
-.prep .big{margin-top:6px}
-.sheet-title{font-weight:700;font-size:17px;padding:8px 12px 4px}
+.vfoot button:disabled{opacity:.6}
+.triminfo{display:flex;justify-content:space-between;color:var(--dim);font-size:13px;padding:2px 16px 0;font-variant-numeric:tabular-nums}
+.triminfo b{color:var(--text)}
+
+/* player */
+.pl{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;touch-action:manipulation}
+.pl video{max-width:100%;max-height:100%;width:100%}
+.pl-big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;
+background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center}
+.pl-big svg.i{width:30px;height:30px;margin-left:4px}
+.pl-wait{position:absolute;left:50%;top:50%;margin:-17px 0 0 -17px}
+.pl-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;padding:18px 12px 10px;
+background:linear-gradient(transparent,rgba(0,0,0,.8));opacity:0;transition:opacity .25s;pointer-events:none}
+.pl.show .pl-bar,.pl.paused .pl-bar,.pl.trimming .pl-bar{opacity:1;pointer-events:auto}
+.pl-btn{width:38px;height:38px;flex:none;color:#fff;display:grid;place-items:center}
+.pl-time{color:#fff;font-size:12px;font-variant-numeric:tabular-nums;flex:none;min-width:34px;text-align:center}
+.pl-track{position:relative;flex:1;height:34px;touch-action:none}
+.pl-rail{position:absolute;left:0;right:0;top:15px;height:4px;border-radius:2px;background:rgba(255,255,255,.25)}
+.pl-fill{position:absolute;left:0;top:15px;height:4px;border-radius:2px;background:var(--accent)}
+.pl-knob{position:absolute;top:10px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.pl-trim{position:absolute;top:9px;height:16px;border:2px solid var(--gold);border-radius:4px;background:rgba(255,209,102,.18);pointer-events:none}
+.pl-h{position:absolute;top:2px;width:26px;height:30px;margin-left:-13px;display:grid;place-items:center}
+.pl-h::after{content:"";width:6px;height:22px;border-radius:3px;background:var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+/* sheets (menus, settings, rename, confirm) */
+.menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;animation:fade .15s}
+@keyframes fade{from{opacity:0}}
+.sheet{background:var(--card);width:100%;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:8px 10px calc(14px + var(--safe-bot));animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(30px)}}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 8px}
+.sheet-title{font-weight:700;font-size:17px;padding:6px 12px 2px}
+.sheet .note{color:var(--dim);font-size:13px;padding:4px 12px 10px}
+.row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:13px 12px;border-radius:11px;font-size:16px}
+.row:active{background:var(--card2)}
+.row svg.i{color:var(--dim)}
+.row.danger,.row.danger svg.i{color:var(--accent2)}
+.row.on svg.i{color:var(--gold)}
+.row .check{margin-left:auto;color:var(--accent)}
+.sep{height:1px;background:var(--line);margin:6px 12px}
 .setting{display:flex;align-items:center;gap:14px;padding:12px}
 .setting b{display:block;font-size:16px;margin-bottom:4px}
 .setting span{display:block;color:var(--dim);font-size:13px}
@@ -94,21 +169,27 @@ background:linear-gradient(transparent,rgba(0,0,0,.75));opacity:0;transition:opa
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:transform .2s}
 .switch:checked{background:var(--ok)}
 .switch:checked::after{transform:translateX(20px)}
-.menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end}
-.sheet{background:var(--card);width:100%;border-radius:16px 16px 0 0;padding:10px 12px calc(14px + var(--safe-bot))}
-.sheet button{display:block;width:100%;text-align:left;padding:14px 12px;border-radius:10px;font-size:16px}
-.sheet button:active{background:var(--line)}
-.sheet .danger{color:var(--accent2)}
-.sheet .note{color:var(--dim);font-size:13px;padding:6px 12px 10px}
+.field{margin:8px 12px;display:flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:0 12px;height:46px}
+.field input{flex:1;border:0;outline:0;background:transparent;font-size:16px}
+.field span{color:var(--faint)}
+.btns{display:flex;gap:10px;padding:10px 12px 4px}
+.btns button{flex:1;padding:13px;border-radius:12px;background:var(--card2);font-weight:600}
+.btns button.main{background:var(--accent);color:#fff}
+.store{padding:4px 12px 8px}
+.store .g{display:flex;justify-content:space-between;font-size:14px;margin:10px 0 5px}
+.store .g span{color:var(--dim)}
+.store .meter{height:6px;border-radius:3px;background:var(--card2);overflow:hidden}
+.store .meter i{display:block;height:100%;background:var(--accent);border-radius:3px}
+
+/* QR scanner */
 .scan{position:fixed;inset:0;z-index:40;background:#000;display:flex;flex-direction:column}
 .scan video{flex:1;width:100%;object-fit:cover;min-height:0}
 .scan .frame{position:absolute;left:50%;top:45%;width:64vw;max-width:300px;aspect-ratio:1;transform:translate(-50%,-50%);
 border:3px solid rgba(255,255,255,.85);border-radius:18px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
 .scan p{position:absolute;left:0;right:0;top:calc(20px + var(--safe-top));text-align:center;margin:0;font-weight:600}
 .scan button{margin:12px;padding:14px;border-radius:12px;background:#1c1c22;font-weight:600}
-.toast{position:fixed;left:50%;bottom:calc(20px + var(--safe-bot));transform:translateX(-50%);background:#26262d;
-padding:10px 16px;border-radius:10px;z-index:50;max-width:90vw;text-align:center}
-.hidden{display:none!important}
+.toast{position:fixed;left:50%;bottom:calc(20px + var(--safe-bot));transform:translateX(-50%);background:#26262e;
+padding:11px 16px;border-radius:12px;z-index:60;max-width:90vw;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);font-size:14px}
 </style>
 </head>
 <body>
@@ -122,12 +203,15 @@ padding:10px 16px;border-radius:10px;z-index:50;max-width:90vw;text-align:center
 const KEY = "greedy-clips-pc";
 const NTFY = "https://ntfy.sh/";
 const TABS = ["Replays", "Recordings", "Screenshots", "GIFs"];
+const SORTS = ["Newest first", "Oldest first", "Longest first", "Largest first", "Name (A-Z)"];
+const FAV = "★ Favorites";
 const app = document.getElementById("app");
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 let saved = load();
-let clips = [], tab = null, game = "All", busyTimer = null;
+let clips = [], tab = null, game = "All", sort = "Newest first", query = "", busyTimer = null;
+let status = null, statusTimer = null;
 
 if (!isIOS) {               // Android: installable app (iPhone keeps the link it was added with)
   const l = document.createElement("link");
@@ -139,19 +223,57 @@ function store(v) { saved = v; try { v ? localStorage.setItem(KEY, JSON.stringif
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
     if (k === "class") e.className = v;
     else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
     else if (k === "style") e.setAttribute("style", v);
-    else e.setAttribute(k, v);
+    else e.setAttribute(k, v === true ? "" : v);
   }
-  for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : document.createTextNode(String(k)));
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(String(k)));
   return e;
 }
+
+// Icons (drawn here, no outside files)
+const ICONS = {
+  refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><polyline points="20 4 20 9 15 9"/>',
+  more: '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><line x1="16" y1="16" x2="20.5" y2="20.5"/>',
+  sort: '<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4m-3.5 3.5L17 4l3.5 3.5"/>',
+  star: '<polygon points="12 3.5 14.6 8.9 20.5 9.6 16.1 13.6 17.3 19.5 12 16.6 6.7 19.5 7.9 13.6 3.5 9.6 9.4 8.9"/>',
+  starf: '<polygon fill="currentColor" points="12 3.5 14.6 8.9 20.5 9.6 16.1 13.6 17.3 19.5 12 16.6 6.7 19.5 7.9 13.6 3.5 9.6 9.4 8.9"/>',
+  back: '<polyline points="15 5 8 12 15 19"/>',
+  close: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+  play: '<polygon fill="currentColor" stroke="none" points="7 4.5 19.5 12 7 19.5"/>',
+  pause: '<rect fill="currentColor" stroke="none" x="6" y="5" width="4" height="14" rx="1"/><rect fill="currentColor" stroke="none" x="14" y="5" width="4" height="14" rx="1"/>',
+  full: '<polyline points="4 9 4 4 9 4"/><polyline points="15 4 20 4 20 9"/><polyline points="20 15 20 20 15 20"/><polyline points="9 20 4 20 4 15"/>',
+  trim: '<circle cx="6" cy="6.5" r="2.7"/><circle cx="6" cy="17.5" r="2.7"/><line x1="8.3" y1="8" x2="20" y2="18"/><line x1="8.3" y1="16" x2="20" y2="6"/>',
+  download: '<line x1="12" y1="4" x2="12" y2="15"/><polyline points="7.5 10.5 12 15 16.5 10.5"/><line x1="5" y1="20" x2="19" y2="20"/>',
+  trash: '<line x1="4" y1="7" x2="20" y2="7"/><path d="M6.5 7l1 13h9l1-13M9.5 7V4h5v3"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><line x1="13.5" y1="6.5" x2="17.5" y2="10.5"/>',
+  replay: '<path d="M4 12a8 8 0 1 0 2.5-5.8"/><polyline points="4 4 4 9 9 9"/><polyline points="12 8 12 12 14.5 14"/>',
+  record: '<circle cx="12" cy="12" r="6.5" fill="currentColor" stroke="none"/>',
+  stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>',
+  camera: '<path d="M4 8h3.2l1.8-2.5h6L16.8 8H20v11H4z"/><circle cx="12" cy="13.3" r="3.3"/>',
+  gif: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><text x="12" y="15" text-anchor="middle" font-size="6.6" font-weight="800" fill="currentColor" stroke="none" font-family="system-ui,sans-serif">GIF</text>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
+  qr: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM18 14h2M14 18v2"/>',
+  unlink: '<path d="M9.5 14.5l5-5M8 11l-2 2a3.5 3.5 0 0 0 5 5l2-2M16 13l2-2a3.5 3.5 0 0 0-5-5l-2 2"/><line x1="3" y1="3" x2="21" y2="21"/>',
+  check: '<polyline points="5 12.5 10 17 19 7"/>',
+};
+function icon(name) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "i");
+  s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor");
+  s.setAttribute("stroke-width", "2"); s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+  s.innerHTML = ICONS[name] || "";
+  return s;
+}
 function toast(msg) {
+  document.querySelectorAll(".toast").forEach(t => t.remove());
   const t = el("div", {class: "toast"}, msg); document.body.append(t);
   setTimeout(() => t.remove(), 3200);
 }
-function screen(...kids) { app.replaceChildren(el("div", {class: "center"}, ...kids)); }
+function screen(...kids) { stopStatus(); app.replaceChildren(el("div", {class: "center"}, ...kids)); }
 function spinner(text) { screen(el("div", {class: "spin"}), el("p", {}, text)); }
 function b64urlDecode(s) {
   s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "=";
@@ -164,13 +286,21 @@ function readPairLink(text) {
 }
 async function timed(url, opts, ms) {
   const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 8000);
-  try { return await fetch(url, Object.assign({signal: c.signal, cache: "no-store", referrerPolicy: "no-referrer"}, opts || {})); }
+  if (opts && opts.signal) opts.signal.addEventListener("abort", () => c.abort());
+  try { return await fetch(url, Object.assign({cache: "no-store", referrerPolicy: "no-referrer"}, opts || {}, {signal: c.signal})); }
   finally { clearTimeout(t); }
 }
 function api(path, opts) {
   opts = opts || {};
   opts.headers = Object.assign({Authorization: "Bearer " + saved.token}, opts.headers || {});
   return timed(saved.url + path, opts, opts.ms);
+}
+async function apiJSON(path, body, ms) {
+  const r = await api(path, {method: "POST", ms: ms || 15000, headers: {"Content-Type": "application/json"},
+                             body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Your PC said no (" + r.status + ").");
+  return j;
 }
 
 // ------------------------------------------------------------------ pairing
@@ -325,13 +455,14 @@ async function refresh() {
     const j = await r.json();
     clips = j.clips || [];
     if (j.pc && j.pc !== saved.pc) store(Object.assign({}, saved, {pc: j.pc}));
+    if (!status) await loadStatus();
     render();
+    startStatus();
     // the PC makes new thumbnails and lengths in the background: pick them up shortly
     clearTimeout(refresh.later);
     const missing = clips.some(c => c.kind === "video" && !c.length);
     refresh.tries = missing ? (refresh.tries || 0) + 1 : 0;
-    if (missing && refresh.tries <= 5 && !document.querySelector(".viewer"))
-      refresh.later = setTimeout(quietRefresh, 3000);
+    if (missing && refresh.tries <= 5) refresh.later = setTimeout(quietRefresh, 3000);
   } catch (e) {
     // already showing clips: keep them and try again quietly instead of saying "offline"
     if (clips.length && document.querySelector(".grid")) {
@@ -344,13 +475,51 @@ async function refresh() {
 }
 
 async function quietRefresh() {
-  if (document.querySelector(".viewer, .menu, .scan")) return;
-  const y = window.scrollY;
+  if (document.hidden || document.querySelector(".viewer, .menu, .scan")) {
+    clearTimeout(refresh.later);
+    refresh.later = setTimeout(quietRefresh, 3000);       // after the sheet or player closes
+    return;
+  }
+  const y = window.scrollY, active = document.activeElement && document.activeElement.id;
   await refresh();
   window.scrollTo(0, y);
+  if (active) { const f = document.getElementById(active); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }
 }
 
+// what the PC's capture buttons can do right now (Instant Replay on, recording...)
+async function loadStatus() {
+  try {
+    const r = await api("/api/status", {ms: 10000});
+    if (r.ok) { status = await r.json(); status.at = Date.now(); }
+  } catch (e) {}
+}
+function startStatus() {
+  if (statusTimer || document.hidden) return;
+  statusTimer = setInterval(async () => {
+    if (document.hidden || !document.querySelector(".top")) return;
+    const before = JSON.stringify([status && status.actions, status && status.recording, status && status.replay_on]);
+    await loadStatus();
+    const after = JSON.stringify([status && status.actions, status && status.recording, status && status.replay_on]);
+    if (before !== after) paintTop(); else paintStatusLine();
+  }, 5000);
+  clearInterval(startStatus.tick);
+  startStatus.tick = setInterval(paintStatusLine, 1000);     // the recording clock
+}
+function stopStatus() { clearInterval(statusTimer); clearInterval(startStatus.tick); statusTimer = null; }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopStatus();                                            // nothing runs while you're away
+    document.querySelectorAll("video").forEach(v => v.pause());
+  } else if (saved && document.querySelector(".top")) {
+    loadStatus().then(() => { paintTop(); startStatus(); });
+    quietRefresh();
+  }
+});
+
 function fmtLen(s) { if (!s) return ""; s = Math.round(s); const m = Math.floor(s / 60); return m + ":" + String(s % 60).padStart(2, "0"); }
+function fmtClock(s) { s = Math.max(0, s || 0); const m = Math.floor(s / 60); return m + ":" + (s % 60).toFixed(1).padStart(4, "0"); }
+function fmtSize(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB"; }
 function fmtDay(t) {
   const d = new Date(t * 1000), today = new Date(), y = new Date(); y.setDate(today.getDate() - 1);
   if (d.toDateString() === today.toDateString()) return "Today";
@@ -358,54 +527,263 @@ function fmtDay(t) {
   return d.toLocaleDateString(undefined, {weekday: "long", month: "long", day: "numeric",
                                           year: d.getFullYear() === today.getFullYear() ? undefined : "numeric"});
 }
+function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"}); }
 function shortTitle(c) {   // "VALORANT Replay 2026-10-27 20-00-00" -> "Replay"
   let t = c.title;
   if (c.game && t.startsWith(c.game + " ")) t = t.slice(c.game.length + 1);
   t = t.replace(/\s*\d{4}-\d{2}-\d{2}[ _]\d{2}-\d{2}-\d{2}(\s*\(\d+\))?$/, "").trim();
   return t || c.title;
 }
-function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"}); }
 
-function render() {
-  const games = [...new Set(clips.map(c => c.game))];
-  if (game !== "All" && !games.includes(game)) game = "All";
-  const inGame = clips.filter(c => game === "All" || c.game === game);
-  const counts = Object.fromEntries(TABS.map(t => [t, inGame.filter(c => c.tab === t).length]));
+function shown() {
+  let list = game === FAV ? clips.filter(c => c.favorite) : clips.filter(c => game === "All" || c.game === game);
+  const q = query.trim().toLowerCase();
+  if (q) list = list.filter(c => c.title.toLowerCase().includes(q) || c.game.toLowerCase().includes(q));
+  return list;
+}
+function sorted(list) {
+  const by = {
+    "Newest first": (a, b) => b.date - a.date, "Oldest first": (a, b) => a.date - b.date,
+    "Longest first": (a, b) => (b.length || 0) - (a.length || 0), "Largest first": (a, b) => b.size - a.size,
+    "Name (A-Z)": (a, b) => a.title.localeCompare(b.title)}[sort];
+  return list.slice().sort(by);
+}
+
+function statusText() {
+  if (!status) return "Connected";
+  if (status.recording) return "Recording " + fmtLen(status.recording_seconds + Math.floor((Date.now() - status.at) / 1000) || 0.1);
+  if (status.replay_on) return "Instant Replay on" + (status.replay_seconds ? " · last " + fmtLen(status.replay_seconds).replace(/:00$/, " min") : "");
+  return "Instant Replay off";
+}
+function paintStatusLine() {
+  const line = document.querySelector(".pc span");
+  if (!line) return;
+  const dot = el("i", {class: "dot" + (status && status.recording ? " rec" : "")});
+  line.replaceChildren(dot, statusText());
+  const rec = document.querySelector(".cap[data-a=toggle_recording] .lbl");
+  if (rec && status && status.recording) rec.textContent = "Stop " + fmtLen(status.recording_seconds + Math.floor((Date.now() - status.at) / 1000) || 0.1);
+}
+
+// the same buttons as the PC: Save Replay, Record, Screenshot, Instant GIF
+const CAPTURE = {
+  save_replay: ["replay", "Save Replay", "Saving your replay on the PC..."],
+  toggle_recording: ["record", "Record", ""],
+  screenshot: ["camera", "Screenshot", "Taking a screenshot on the PC..."],
+  save_gif: ["gif", "Instant GIF", "Making a GIF on the PC..."],
+};
+function captureBar() {
+  const acts = (status && status.actions) || [];
+  if (!acts.length) return null;
+  return el("div", {class: "capture"}, acts.map(a => {
+    const [ic, label] = CAPTURE[a];
+    const live = a === "toggle_recording" && status.recording;
+    const b = el("button", {class: "cap" + (a === "save_replay" ? " primary" : "") + (live ? " live" : ""), "data-a": a},
+      icon(live ? "stop" : ic), el("span", {class: "lbl"}, live ? "Stop" : label));
+    b.onclick = () => doAction(a, b);
+    return b;
+  }));
+}
+async function doAction(a, b) {
+  b.disabled = true;
+  try {
+    const j = await apiJSON("/api/action/" + a);
+    status = Object.assign(j.status, {at: Date.now()});
+    const msg = a === "toggle_recording" ? (status.recording ? "Recording on your PC" : "Recording saved on your PC")
+                                         : CAPTURE[a][2];
+    toast(msg);
+    paintTop();
+    [4000, 9000].forEach(ms => setTimeout(quietRefresh, ms));   // the new clip shows up
+  } catch (e) {
+    toast(e.message);
+  } finally { b.disabled = false; }
+}
+
+function paintTop() {
+  const old = document.querySelector(".top");
+  if (old) old.replaceWith(header());
+}
+
+function header() {
+  const inGameAll = clips;
+  const games = [...new Set(inGameAll.map(c => c.game))];
+  const favCount = clips.filter(c => c.favorite).length;
+  if (game === FAV && !favCount) game = "All";
+  if (game !== "All" && game !== FAV && !games.includes(game)) game = "All";
+  const list = shown();
+  const counts = Object.fromEntries(TABS.map(t => [t, list.filter(c => c.tab === t).length]));
   const tabs = TABS.filter(t => counts[t]);
   if (!tabs.includes(tab)) tab = tabs[0] || null;
-  const shown = inGame.filter(c => c.tab === tab);
+  const inTab = list.filter(c => c.tab === tab);
+  const total = inTab.reduce((n, c) => n + c.size, 0);
 
-  const header = el("div", {class: "top"},
+  const search = el("input", {id: "q", type: "search", placeholder: "Search clips", value: query, autocomplete: "off", enterkeyhint: "search"});
+  search.addEventListener("input", () => { query = search.value; paintCounts(); renderGrid(); });
+  const gameRow = [["All", "All games", clips.length]];
+  if (favCount) gameRow.push([FAV, "Favorites", favCount]);
+  games.forEach(g => gameRow.push([g, g, clips.filter(c => c.game === g).length]));
+
+  return el("div", {class: "top"},
     el("div", {class: "bar"},
       el("img", {class: "logo", src: "icon-192.png", alt: ""}),
-      el("div", {class: "pc"}, el("b", {}, saved.pc), el("span", {}, clips.length + " clips · private to this phone")),
-      el("button", {class: "icon-btn", "aria-label": "Refresh", onclick: refresh}, "⟳"),
-      el("button", {class: "icon-btn", "aria-label": "More", onclick: menu}, "•••")),
-    games.length > 1 ? el("div", {class: "games"},
-      [["All", "All games", clips.length], ...games.map(g => [g, g, clips.filter(c => c.game === g).length])]
-        .map(([key, label, n]) => el("button", {class: "game" + (key === game ? " on" : ""),
-          onclick: () => { game = key; render(); window.scrollTo(0, 0); }}, label, el("small", {}, n)))) : null,
+      el("div", {class: "pc"}, el("b", {}, saved.pc), el("span", {}, el("i", {class: "dot" + (status && status.recording ? " rec" : "")}), statusText())),
+      el("button", {class: "icon-btn", "aria-label": "Refresh", onclick: () => { toast("Refreshing..."); refresh(); }}, icon("refresh")),
+      el("button", {class: "icon-btn", "aria-label": "More", onclick: menu}, icon("more"))),
+    captureBar(),
+    el("div", {class: "find"},
+      el("label", {class: "search"}, icon("search"), search),
+      el("button", {class: "sortbtn", "aria-label": "Sort", onclick: sortSheet}, icon("sort"), sort.split(" ")[0])),
+    games.length > 1 || favCount ? el("div", {class: "games"},
+      gameRow.map(([key, label, n]) => el("button", {class: "game" + (key === game ? " on" : ""),
+        onclick: () => { game = key; render(); window.scrollTo(0, 0); }},
+        key === FAV ? icon("starf") : null, label, el("small", {}, n)))) : null,
     tabs.length ? el("div", {class: "tabs"}, tabs.map(t => el("button", {
-      class: "tab" + (t === tab ? " on" : ""), onclick: () => { tab = t; render(); }}, t, el("small", {}, counts[t])))) : null);
+      class: "tab" + (t === tab ? " on" : ""), onclick: () => { tab = t; render(); }}, t, el("small", {}, counts[t])))) : null,
+    el("div", {class: "summary"}, inTab.length ? `${inTab.length} item${inTab.length === 1 ? "" : "s"} · ${fmtSize(total)}` : ""));
+}
 
-  const grid = el("div", {class: "grid"});
-  let lastDay = "";
-  for (const c of shown) {
-    const day = fmtDay(c.date);
-    if (day !== lastDay) { grid.append(el("div", {class: "day"}, day)); lastDay = day; }
-    const th = el("div", {class: "thumb"});
-    const img = el("img", {src: saved.url + c.thumb, loading: "lazy", decoding: "async", alt: ""});
-    img.addEventListener("error", () => {      // the PC was busy: ask once more a bit later
-      if (!img.dataset.retried) { img.dataset.retried = "1"; setTimeout(() => { img.src = saved.url + c.thumb + "&r=1"; }, 2500); }
-    });
-    th.append(img);
-    if (c.length) th.append(el("span", {class: "len"}, fmtLen(c.length)));
-    if (c.favorite) th.append(el("span", {class: "star"}, "★"));
-    grid.append(el("button", {class: "clip", onclick: () => view(c)}, th,
-      el("div", {class: "meta"}, el("b", {}, shortTitle(c)), el("span", {}, (game === "All" ? c.game + " · " : "") + fmtTime(c.date)))));
+function paintCounts() {           // while typing a search: update tabs/counts without losing focus
+  const top = document.querySelector(".top");
+  if (!top) return;
+  const list = shown();
+  const count = name => list.filter(c => c.tab === name).length;
+  if (!count(tab)) {                      // nothing here for this search: go where there is
+    const other = [...top.querySelectorAll(".tab")].map(t => t.firstChild.textContent).find(count);
+    if (other) tab = other;
   }
-  app.replaceChildren(header, shown.length ? grid : el("div", {class: "center"}, el("h1", {}, "No clips yet"),
-    el("p", {}, "Clips you save on your PC show up here.")));
+  top.querySelectorAll(".tab").forEach(t => {
+    const name = t.firstChild.textContent;
+    t.querySelector("small").textContent = count(name);
+    t.classList.toggle("on", name === tab);
+  });
+  const inTab = list.filter(c => c.tab === tab);
+  top.querySelector(".summary").textContent = inTab.length ?
+    `${inTab.length} item${inTab.length === 1 ? "" : "s"} · ${fmtSize(inTab.reduce((n, c) => n + c.size, 0))}` : "";
+}
+
+function render() {
+  app.replaceChildren(header(), el("div", {id: "list"}));
+  renderGrid();
+}
+
+function card(c) {
+  const th = el("div", {class: "thumb"});
+  const img = el("img", {src: saved.url + c.thumb, loading: "lazy", decoding: "async", alt: ""});
+  img.addEventListener("error", () => {      // the PC was busy: ask once more a bit later
+    if (!img.dataset.retried) { img.dataset.retried = "1"; setTimeout(() => { img.src = saved.url + c.thumb + "&r=1"; }, 2500); }
+  });
+  th.append(img);
+  if (c.length && c.kind !== "image") th.append(el("span", {class: "len"}, fmtLen(c.length)));
+  if (c.favorite) th.append(el("span", {class: "star"}, icon("starf")));
+  return el("div", {class: "clip"},
+    el("button", {class: "open", onclick: () => view(c)}, th,
+      el("div", {class: "meta"}, el("b", {}, shortTitle(c)),
+        el("span", {}, (game === "All" || game === FAV ? c.game + " · " : "") + fmtTime(c.date)))),
+    el("button", {class: "more", "aria-label": "Clip options", onclick: () => clipMenu(c)}, icon("more")));
+}
+
+function renderGrid() {
+  const holder = document.getElementById("list");
+  if (!holder) return;
+  const list = sorted(shown().filter(c => c.tab === tab));
+  if (!list.length) {
+    holder.replaceChildren(el("div", {class: "empty"},
+      el("b", {}, query ? "No clips match" : clips.length ? "Nothing here" : "No clips yet"),
+      el("span", {}, query ? "Try another search." : "Clips you save on your PC show up here.")));
+    return;
+  }
+  const grid = el("div", {class: "grid"});
+  const byDay = sort === "Newest first" || sort === "Oldest first";
+  let lastDay = "";
+  for (const c of list) {
+    if (byDay) {
+      const day = fmtDay(c.date);
+      if (day !== lastDay) { grid.append(el("div", {class: "day"}, day)); lastDay = day; }
+    }
+    grid.append(card(c));
+  }
+  holder.replaceChildren(grid);
+}
+
+// ------------------------------------------------------------------- sheets
+function sheet(...kids) { return sheetWith(null, ...kids); }
+function sheetWith(onDismiss, ...kids) {
+  const m = el("div", {class: "menu"});
+  const close = () => m.remove();
+  m.addEventListener("click", e => { if (e.target === m) { close(); if (onDismiss) onDismiss(); } });
+  m.append(el("div", {class: "sheet"}, el("div", {class: "grab"}), ...kids));
+  document.body.append(m);
+  return close;
+}
+function row(ic, text, fn, cls) {
+  return el("button", {class: "row" + (cls ? " " + cls : ""), onclick: fn}, ic ? icon(ic) : null, text);
+}
+function confirmSheet(title, text, yes, danger) {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (!done) { done = true; close(); resolve(v); } };
+    const close = sheetWith(() => finish(false), el("div", {class: "sheet-title"}, title), el("div", {class: "note"}, text),
+      el("div", {class: "btns"}, el("button", {onclick: () => finish(false)}, "Cancel"),
+        el("button", {class: "main", onclick: () => finish(true)}, yes)));
+  });
+}
+
+function sortSheet() {
+  const close = sheet(el("div", {class: "sheet-title"}, "Sort by"),
+    SORTS.map(s => el("button", {class: "row", onclick: () => { sort = s; close(); render(); }},
+      s, s === sort ? el("span", {class: "check"}, icon("check")) : null)));
+}
+
+function clipMenu(c, after) {
+  const close = sheet(el("div", {class: "sheet-title"}, shortTitle(c)),
+    el("div", {class: "note"}, c.game + " · " + fmtDay(c.date) + ", " + fmtTime(c.date) + " · " + fmtSize(c.size)),
+    row(c.favorite ? "starf" : "star", c.favorite ? "Remove from favorites" : "Add to favorites",
+        () => { close(); toggleFav(c, after); }, c.favorite ? "on" : ""),
+    row("edit", "Rename", () => { close(); renameSheet(c, after); }),
+    row("download", "Download to device", () => { close(); view(c, {download: true}); }),
+    el("div", {class: "sep"}),
+    row("trash", "Delete", () => { close(); deleteClip(c, after); }, "danger"));
+}
+
+async function toggleFav(c, after) {
+  try {
+    const j = await apiJSON("/api/clip/" + c.id + "/favorite");
+    c.favorite = !!j.favorite;
+    toast(c.favorite ? "Added to favorites" : "Removed from favorites");
+    if (after) after(c);
+    render();
+  } catch (e) { toast(e.message); }
+}
+
+function renameSheet(c, after) {
+  const input = el("input", {value: c.title, autocomplete: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done"});
+  const ext = (c.file.match(/\.\w+$/) || [""])[0];
+  const save = async () => {
+    const name = input.value.trim();
+    if (!name || name === c.title) return close();
+    try {
+      const j = await apiJSON("/api/clip/" + c.id + "/rename", {name});
+      close(); toast("Renamed");
+      await refresh();
+      const fresh = clips.find(x => x.id === j.id);
+      if (fresh && after) after(fresh);
+    } catch (e) { toast(e.message); }
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") save(); });
+  const close = sheet(el("div", {class: "sheet-title"}, "Rename"),
+    el("div", {class: "field"}, input, el("span", {}, ext)),
+    el("div", {class: "btns"}, el("button", {onclick: () => close()}, "Cancel"), el("button", {class: "main", onclick: save}, "Save")));
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+async function deleteClip(c, after) {
+  if (!await confirmSheet("Delete this clip?", `"${shortTitle(c)}" goes to the Recycle Bin on your PC (you can restore it there).`, "Delete")) return;
+  try {
+    await apiJSON("/api/clip/" + c.id + "/delete");
+    clips = clips.filter(x => x.id !== c.id);
+    toast("Moved to the Recycle Bin");
+    if (after) after(null);
+    render();
+  } catch (e) { toast(e.message); }
 }
 
 // ---------------------------------------------------------------- settings
@@ -416,14 +794,52 @@ function playsAV1() {
   const v = document.createElement("video");
   return !!(v.canPlayType('video/mp4; codecs="av01.0.12M.08"') || v.canPlayType('video/mp4; codecs="av01.0.08M.08"'));
 }
-function fmtSize(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB"; }
+
+function settings() {
+  const sw = el("input", {type: "checkbox", class: "switch"});
+  sw.checked = !!prefs().convert;
+  sw.addEventListener("change", () => { setPref("convert", sw.checked); toast(sw.checked ? "Videos play as a phone version" : "Videos play the original file"); });
+  const byGame = {};
+  clips.forEach(c => { byGame[c.game] = (byGame[c.game] || 0) + c.size; });
+  const total = Object.values(byGame).reduce((a, b) => a + b, 0) || 1;
+  const top = Object.entries(byGame).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  sheet(el("div", {class: "sheet-title"}, "Settings"),
+    el("label", {class: "setting"},
+      el("div", {}, el("b", {}, "Convert videos for phone"),
+        el("span", {}, "On: plays smoothly on any connection; the first play of a clip takes a few seconds while your PC makes a lighter copy. " +
+                       "Off: plays the original file right away at full quality, but needs fast internet. " +
+                       (playsAV1() ? "This phone can play AV1 clips." : "This phone may not play AV1 clips; the player offers a phone version if so."))),
+      sw),
+    el("div", {class: "sep"}),
+    el("div", {class: "sheet-title"}, "Storage"),
+    el("div", {class: "note"}, `${clips.length} clips · ${fmtSize(total)} on ${saved.pc}`),
+    el("div", {class: "store"}, top.map(([g, b]) => [
+      el("div", {class: "g"}, g, el("span", {}, fmtSize(b))),
+      el("div", {class: "meter"}, el("i", {style: `width:${Math.max(2, b * 100 / total)}%`}))])));
+}
+
+function menu() {
+  const close = sheet(
+    el("div", {class: "note"}, "Paired with " + saved.pc + ". Only this phone can see these clips; you can remove it anytime in Greedy Clips > ••• > Phone app."),
+    clips.length ? row("gear", "Settings", () => { close(); settings(); }) : null,
+    row("qr", "Pair with a new QR code", () => { close(); scan(); }),
+    el("div", {class: "sep"}),
+    row("unlink", "Unpair this phone", async () => {
+      close();
+      if (!await confirmSheet("Unpair this phone?", "You'll need a new QR code from your PC to see your clips again.", "Unpair")) return;
+      try { await api("/api/unpair", {method: "POST", ms: 8000}); } catch (e) {}
+      store(null); stopStatus(); welcome();
+    }, "danger"));
+}
 
 // --------------------------------------------------------------------- viewer
-// Make (or find) the phone version on the PC; resolves when it's ready.
+// Make (or find) the phone version on the PC; resolves when it's ready. While this
+// waits, the phone asks every second; if it stops asking (app closed, phone locked),
+// the PC stops converting by itself.
 function phoneVersion(c, onProgress, alive) {
   return new Promise((resolve, reject) => {
     const poll = async () => {
-      if (!alive()) return reject(new Error("closed"));
+      if (!alive() || document.hidden) return reject(new Error("closed"));
       try {
         const r = await api("/api/prepare/" + c.id, {method: "POST", ms: 15000});
         const j = await r.json();
@@ -440,17 +856,18 @@ function phoneVersion(c, onProgress, alive) {
 // Save a file to the phone. iPhone: download it, then the share sheet (Save Video /
 // Save to Files) on the next tap, since iOS only opens it right after a tap.
 // Android and others: a normal download.
-async function saveFile(btn, url, name, type, size) {
+async function saveFile(btn, url, name, type, size, signal) {
   if (!isIOS || !navigator.share) {
     const a = el("a", {href: url + "&dl=1", rel: "noopener"});
     document.body.append(a); a.click(); a.remove();
     toast("Downloading " + name);
     return;
   }
-  const label = btn.textContent;
+  const label = btn.lastChild.textContent;
+  const text = t => { btn.lastChild.textContent = t; };
   btn.disabled = true;
   try {
-    const r = await timed(url, {}, 30 * 60 * 1000);
+    const r = await timed(url, {signal}, 30 * 60 * 1000);
     if (!r.ok) throw new Error("PC busy (" + r.status + ")");
     const total = +r.headers.get("Content-Length") || size || 0;
     const reader = r.body.getReader(); const parts = []; let got = 0;
@@ -458,42 +875,57 @@ async function saveFile(btn, url, name, type, size) {
       const {done, value} = await reader.read();
       if (done) break;
       parts.push(value); got += value.length;
-      btn.textContent = total ? "Downloading " + Math.round(got * 100 / total) + "%" : "Downloading " + fmtSize(got);
+      text(total ? "Downloading " + Math.round(got * 100 / total) + "%" : "Downloading " + fmtSize(got));
     }
     const file = new File(parts, name, {type});
     btn.disabled = false;
-    btn.textContent = "Tap to save";
+    text("Tap to save");
     btn.classList.add("ready");
     btn.onclick = async () => {
-      try { await navigator.share({files: [file]}); btn.textContent = "Saved"; }
+      try { await navigator.share({files: [file]}); text("Saved"); }
       catch (e) { if (e.name !== "AbortError") toast("Couldn't open the share sheet: " + e.message); }
     };
   } catch (e) {
-    btn.disabled = false; btn.textContent = label;
-    toast("Download failed: " + e.message + ". Try again.");
+    btn.disabled = false; text(label);
+    if (e.name !== "AbortError") toast("Download failed: " + e.message + ". Try again.");
   }
 }
 
-// A video player with our own controls. The phone's built-in controls could miss a tap
-// on pause; here tapping the video always plays/pauses, with a clear button and seek bar.
+// A video player with our own controls: tapping the video always plays/pauses, with a
+// seek bar, and trim handles when trimming (like the PC player).
 function player(src) {
-  const video = el("video", {playsinline: "", "webkit-playsinline": "", autoplay: "", preload: "auto", src});
-  const big = el("button", {class: "pl-big", "aria-label": "Play"}, "▶");
-  const btn = el("button", {class: "pl-btn", "aria-label": "Play/pause"}, "❚❚");
+  const video = el("video", {playsinline: true, "webkit-playsinline": true, autoplay: true, preload: "auto", src});
+  const big = el("button", {class: "pl-big", "aria-label": "Play"}, icon("play"));
+  const btn = el("button", {class: "pl-btn", "aria-label": "Play/pause"}, icon("pause"));
   const cur = el("span", {class: "pl-time"}, "0:00");
   const dur = el("span", {class: "pl-time"}, "0:00");
-  const seek = el("input", {type: "range", class: "pl-seek", min: "0", max: "1000", value: "0", step: "1"});
-  const full = el("button", {class: "pl-btn", "aria-label": "Full screen"}, "⤢");
+  const fill = el("div", {class: "pl-fill"}), knob = el("div", {class: "pl-knob"});
+  const trimBox = el("div", {class: "pl-trim hidden"});
+  const hIn = el("div", {class: "pl-h hidden", "data-h": "in"}), hOut = el("div", {class: "pl-h hidden", "data-h": "out"});
+  const track = el("div", {class: "pl-track", role: "slider", "aria-label": "Seek"},
+    el("div", {class: "pl-rail"}), fill, trimBox, knob, hIn, hOut);
+  const full = el("button", {class: "pl-btn", "aria-label": "Full screen"}, icon("full"));
   const wait = el("div", {class: "spin pl-wait hidden"});
-  const bar = el("div", {class: "pl-bar"}, btn, cur, seek, dur, full);
+  const bar = el("div", {class: "pl-bar"}, btn, cur, track, dur, full);
   const box = el("div", {class: "pl"}, video, wait, big, bar);
-  let seeking = false, hideT = null;
-  const t = s => fmtLen(s || 0) || "0:00";
+  const api_ = {box, video, trim: null, onTrim: null};
+  let hideT = null, drag = null;
+  const pct = t => video.duration ? Math.min(100, Math.max(0, t / video.duration * 100)) : 0;
   const paint = () => {
     const p = video.paused || video.ended;
-    btn.textContent = p ? "▶" : "❚❚";
+    btn.replaceChildren(icon(p ? "play" : "pause"));
     big.classList.toggle("hidden", !p);
     box.classList.toggle("paused", p);
+  };
+  const paintBar = () => {
+    fill.style.width = pct(video.currentTime) + "%"; knob.style.left = pct(video.currentTime) + "%";
+    cur.textContent = fmtLen(video.currentTime) || "0:00";
+    const tr = api_.trim;
+    [trimBox, hIn, hOut].forEach(e => e.classList.toggle("hidden", !tr));
+    if (tr) {
+      trimBox.style.left = pct(tr.in) + "%"; trimBox.style.width = (pct(tr.out) - pct(tr.in)) + "%";
+      hIn.style.left = pct(tr.in) + "%"; hOut.style.left = pct(tr.out) + "%";
+    }
   };
   const showBar = () => {
     box.classList.add("show");
@@ -511,69 +943,156 @@ function player(src) {
   ["play", "pause", "playing", "ended"].forEach(ev => video.addEventListener(ev, () => { paint(); showBar(); }));
   video.addEventListener("waiting", () => wait.classList.remove("hidden"));
   ["playing", "canplay", "pause", "error"].forEach(ev => video.addEventListener(ev, () => wait.classList.add("hidden")));
-  video.addEventListener("loadedmetadata", () => { dur.textContent = t(video.duration); });
+  video.addEventListener("loadedmetadata", () => { dur.textContent = fmtLen(video.duration) || "0:00"; paintBar(); });
   video.addEventListener("timeupdate", () => {
-    cur.textContent = t(video.currentTime);
-    if (!seeking && video.duration) seek.value = Math.round(video.currentTime / video.duration * 1000);
+    const tr = api_.trim;
+    if (tr && !drag && !video.paused && video.currentTime >= tr.out) {   // loop the trimmed part
+      video.currentTime = tr.in;
+    }
+    if (!drag) paintBar();
   });
-  seek.addEventListener("input", () => {
-    seeking = true; showBar();
-    if (video.duration) { video.currentTime = seek.value / 1000 * video.duration; cur.textContent = t(video.currentTime); }
+  // seek bar + trim handles: drag with a finger
+  const timeAt = e => {
+    const r = track.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (video.duration || 0);
+  };
+  track.addEventListener("pointerdown", e => {
+    e.preventDefault(); e.stopPropagation();
+    track.setPointerCapture(e.pointerId);
+    const t = timeAt(e), tr = api_.trim;
+    drag = "seek";
+    if (tr && video.duration) {          // the nearest handle, if the finger is close to one
+      const near = 0.06 * video.duration;
+      const dIn = Math.abs(t - tr.in), dOut = Math.abs(t - tr.out);
+      if (Math.min(dIn, dOut) < near) drag = dIn <= dOut ? "in" : "out";
+    }
+    move(e); showBar();
   });
-  seek.addEventListener("change", () => { seeking = false; });
+  const move = e => {
+    if (!drag || !video.duration) return;
+    const t = timeAt(e), tr = api_.trim;
+    if (drag === "in") tr.in = Math.min(t, tr.out - 0.5);
+    else if (drag === "out") tr.out = Math.max(t, tr.in + 0.5);
+    if (drag === "seek") video.currentTime = t;
+    else video.currentTime = drag === "in" ? tr.in : tr.out;
+    fill.style.width = pct(video.currentTime) + "%"; knob.style.left = pct(video.currentTime) + "%";
+    cur.textContent = fmtLen(video.currentTime) || "0:00";
+    paintBar();
+    if (drag !== "seek" && api_.onTrim) api_.onTrim(tr);
+  };
+  track.addEventListener("pointermove", move);
+  ["pointerup", "pointercancel"].forEach(ev => track.addEventListener(ev, () => { drag = null; showBar(); }));
   full.addEventListener("click", e => {
     e.stopPropagation();
     if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();       // iPhone
     else if (box.requestFullscreen) box.requestFullscreen().catch(() => {});
   });
+  api_.setTrim = tr => { api_.trim = tr; box.classList.toggle("trimming", !!tr); paintBar(); };
   paint(); showBar();
-  return {box, video};
+  return api_;
 }
 
-function view(c) {
+function view(c, opts) {
+  opts = opts || {};
   const stage = el("div", {class: "stage"});
   const foot = el("div", {class: "vfoot"});
+  const info = el("div", {class: "triminfo hidden"});
+  const fav = el("button", {class: "icon-btn fav" + (c.favorite ? " on" : ""), "aria-label": "Favorite"}, icon(c.favorite ? "starf" : "star"));
+  const titleEl = el("div", {class: "vt"}, el("b", {}, shortTitle(c)), el("span", {}, c.game + " · " + fmtTime(c.date)));
   const box = el("div", {class: "viewer"},
-    el("div", {class: "vbar"}, el("button", {class: "icon-btn", onclick: () => close()}, "✕"), el("b", {}, shortTitle(c))),
-    stage, foot);
-  let open = true;
+    el("div", {class: "vbar"},
+      el("button", {class: "icon-btn v-close", "aria-label": "Back", onclick: () => close()}, icon("back")),
+      titleEl, fav,
+      el("button", {class: "icon-btn", "aria-label": "Clip options", onclick: () => clipMenu(c, updated)}, icon("more"))),
+    stage, info, foot);
+  let open = true, pl = null;
+  const aborter = new AbortController();         // cancels downloads when the player closes
   const alive = () => open && box.isConnected;
-  const close = () => { open = false; clearTimeout(busyTimer); const v = stage.querySelector("video"); if (v) { v.pause(); v.removeAttribute("src"); v.load(); } box.remove(); };
+  const close = () => {
+    open = false; aborter.abort(); clearTimeout(busyTimer);
+    const v = stage.querySelector("video");
+    if (v) { v.pause(); v.removeAttribute("src"); v.load(); }       // stops streaming at once
+    box.remove();
+    render();
+    clearTimeout(refresh.later);
+    quietRefresh();                                  // pick up clips made meanwhile (trims, GIFs)
+  };
+  const updated = fresh => {                       // renamed / favorited / deleted from the menu
+    if (!fresh) return close();
+    Object.assign(c, fresh);
+    titleEl.firstChild.textContent = shortTitle(c);
+    fav.className = "icon-btn fav" + (c.favorite ? " on" : ""); fav.replaceChildren(icon(c.favorite ? "starf" : "star"));
+  };
+  fav.onclick = () => toggleFav(c, updated);
   document.body.append(box);
   const fileName = c.file || c.title + ({image: ".png", gif: ".gif"}[c.kind] || ".mp4");
   const imgType = /\.jpe?g$/i.test(fileName) ? "image/jpeg" : c.kind === "gif" ? "image/gif" : "image/png";
 
   if (c.kind !== "video") {
     stage.append(el("img", {src: saved.url + c.original, alt: c.title}));
-    const save = el("button", {}, "Download to device");
-    save.onclick = () => saveFile(save, saved.url + c.original, fileName, imgType, c.size);
+    const save = el("button", {class: "main"}, icon("download"), el("span", {}, "Download to device"));
+    save.onclick = () => saveFile(save, saved.url + c.original, fileName, imgType, c.size, aborter.signal);
     foot.append(save);
+    if (opts.download) save.click();
     return;
   }
 
-  // one button: download the phone version (plays everywhere, saves to Photos)
-  const save = el("button", {}, "Download to device");
+  // footer: Trim (like the PC player) and Download to device (the phone version)
+  const save = el("button", {class: "main"}, icon("download"), el("span", {}, "Download to device"));
   save.onclick = async () => {
     save.disabled = true;
+    const text = t => { save.lastChild.textContent = t; };
     try {
-      await phoneVersion(c, (st, p) => { save.textContent = "Preparing " + Math.round(p * 100) + "%"; }, alive);
-      save.disabled = false; save.textContent = "Download to device";
-      saveFile(save, saved.url + c.play, c.title + ".mp4", "video/mp4");
+      await phoneVersion(c, (st, p) => text("Preparing " + Math.round(p * 100) + "%"), alive);
+      save.disabled = false; text("Download to device");
+      saveFile(save, saved.url + c.play, c.title + ".mp4", "video/mp4", 0, aborter.signal);
     } catch (e) {
-      save.disabled = false; save.textContent = "Download to device";
+      save.disabled = false; text("Download to device");
       if (e.message !== "closed") toast("Couldn't make a phone version of this clip.");
     }
   };
-  foot.append(save);
+  const trimBtn = el("button", {}, icon("trim"), el("span", {}, "Trim"));
+  const normalFoot = () => {
+    info.classList.add("hidden");
+    if (pl) pl.setTrim(null);
+    foot.replaceChildren(...(status && status.trim ? [trimBtn] : []), save);
+  };
+  trimBtn.onclick = () => {
+    if (!pl || !pl.video.duration) return toast("Wait for the video to load first.");
+    const d = pl.video.duration, t = pl.video.currentTime;
+    const tr = {in: Math.max(0, Math.min(t, d - 5)), out: Math.min(d, Math.max(t, 0) + 5)};
+    if (tr.out - tr.in < 0.5) { tr.in = 0; tr.out = d; }
+    pl.setTrim(tr);
+    pl.video.currentTime = tr.in;
+    const paintInfo = () => info.replaceChildren(el("span", {}, "Start ", el("b", {}, fmtClock(tr.in))),
+      el("span", {}, el("b", {}, fmtClock(tr.out - tr.in))), el("span", {}, "End ", el("b", {}, fmtClock(tr.out))));
+    pl.onTrim = paintInfo; paintInfo();
+    info.classList.remove("hidden");
+    const make = gif => async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        const j = await apiJSON("/api/clip/" + c.id + "/trim", {start: tr.in, end: tr.out, gif});
+        toast(gif ? "Making your GIF on the PC..." : "Saving your trimmed clip on the PC...");
+        normalFoot();
+        waitEdit(j.job, gif);
+      } catch (err) { toast(err.message); b.disabled = false; }
+    };
+    foot.replaceChildren(
+      el("button", {onclick: normalFoot}, "Cancel"),
+      status && status.gif ? el("button", {onclick: make(true)}, icon("gif"), el("span", {}, "Save GIF")) : null,
+      el("button", {class: "main", onclick: make(false)}, icon("check"), el("span", {}, "Save trim")));
+  };
+  normalFoot();
 
   const playOriginal = () => {
-    const {box: pl, video: v} = player(saved.url + c.original);
-    v.addEventListener("error", () => {
+    pl = player(saved.url + c.original);
+    pl.video.addEventListener("error", () => {
+      pl = null;
       stage.replaceChildren(el("div", {class: "prep"},
         el("span", {}, "This phone can't play the original file (its format, like AV1 or MKV, isn't supported here)."),
         el("button", {class: "big", onclick: playConverted}, "Play a phone version")));
     });
-    stage.replaceChildren(pl);
+    stage.replaceChildren(pl.box);
   };
   const playConverted = () => {
     const bar = el("i"); const label = el("span", {}, "Getting it ready for your phone...");
@@ -586,46 +1105,30 @@ function view(c) {
         "Getting it ready for your phone... " + Math.round(p * 100) + "%";
     }, alive).then(() => {
       if (!alive()) return;
-      stage.replaceChildren(player(saved.url + c.play).box);
+      pl = player(saved.url + c.play);
+      stage.replaceChildren(pl.box);
     }).catch(e => {
       if (e.message !== "closed") label.textContent = "Couldn't make a phone version. Try the original.";
     });
   };
   (prefs().convert ? playConverted : playOriginal)();
+  if (opts.download) save.click();
 }
 
-function settings() {
-  const p = prefs();
-  const sw = el("input", {type: "checkbox", class: "switch"});
-  sw.checked = !!p.convert;
-  sw.addEventListener("change", () => { setPref("convert", sw.checked); toast(sw.checked ? "Videos play as a phone version" : "Videos play the original file"); });
-  const m = el("div", {class: "menu", onclick: e => { if (e.target === m) m.remove(); }},
-    el("div", {class: "sheet"},
-      el("div", {class: "sheet-title"}, "Settings"),
-      el("label", {class: "setting"},
-        el("div", {}, el("b", {}, "Convert videos for phone"),
-          el("span", {}, "On: plays smoothly on any connection; the first play of a clip takes a few seconds while your PC makes a lighter copy. " +
-                         "Off: plays the original file right away at full quality, but needs fast internet. " +
-                         (playsAV1() ? "This phone can play AV1 clips." : "This phone may not play AV1 clips; you can still switch to a phone version from the player."))),
-        sw),
-      el("button", {onclick: () => m.remove()}, "Done")));
-  document.body.append(m);
-}
-
-// ----------------------------------------------------------------------- menu
-function menu() {
-  const m = el("div", {class: "menu", onclick: e => { if (e.target === m) m.remove(); }},
-    el("div", {class: "sheet"},
-      el("div", {class: "note"}, "Paired with " + saved.pc + ". Only this phone can see these clips; remove it anytime in Greedy Clips > ••• > Phone app."),
-      el("button", {onclick: () => { m.remove(); settings(); }}, "Settings"),
-      el("button", {onclick: () => { m.remove(); scan(); }}, "Pair with a new QR code"),
-      el("button", {class: "danger", onclick: async () => {
-        if (!confirm("Unpair this phone? You'll need a new QR code from your PC to see your clips again.")) return;
-        try { await api("/api/unpair", {method: "POST", ms: 8000}); } catch (e) {}
-        store(null); m.remove(); welcome();
-      }}, "Unpair this phone"),
-      el("button", {onclick: () => m.remove()}, "Close")));
-  document.body.append(m);
+// a trim or GIF being saved on the PC: tell the phone when it's in the library
+function waitEdit(job, gif) {
+  let tries = 0;
+  const poll = async () => {
+    if (++tries > 300) return;
+    try {
+      const r = await api("/api/job/" + job, {ms: 10000});
+      const j = await r.json();
+      if (j.state === "ready") { toast(gif ? "GIF saved" : "Trimmed clip saved"); return quietRefresh(); }
+      if (j.state === "failed") return toast("Couldn't save it: " + (j.error || "unknown error"));
+    } catch (e) {}
+    setTimeout(poll, 1500);
+  };
+  setTimeout(poll, 1500);
 }
 
 start();
