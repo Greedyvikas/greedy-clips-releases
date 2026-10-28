@@ -70,7 +70,19 @@ text-align:center;padding:32px 24px;gap:14px}
 .progress{width:220px;height:6px;border-radius:3px;background:#222;overflow:hidden}
 .progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
 .vfoot{display:flex;gap:10px;padding:10px 12px calc(12px + var(--safe-bot))}
-.vfoot a,.vfoot button{flex:1;text-align:center;background:#1c1c22;border-radius:10px;padding:12px;color:var(--text);text-decoration:none;font-weight:600}
+.vfoot a,.vfoot button{flex:1;text-align:center;background:var(--accent);border-radius:10px;padding:12px;color:#fff;text-decoration:none;font-weight:600}
+.vfoot button.ghost{background:#1c1c22;color:var(--text)}
+.vfoot button.ready{background:var(--ok);color:#06210f}
+.vfoot button:disabled{opacity:.7}
+.prep .big{margin-top:6px}
+.sheet-title{font-weight:700;font-size:17px;padding:8px 12px 4px}
+.setting{display:flex;align-items:center;gap:14px;padding:12px}
+.setting b{display:block;font-size:16px;margin-bottom:4px}
+.setting span{display:block;color:var(--dim);font-size:13px}
+.switch{appearance:none;-webkit-appearance:none;flex:none;width:51px;height:31px;border-radius:16px;background:#39393d;position:relative;transition:background .2s;margin:0}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch:checked{background:var(--ok)}
+.switch:checked::after{transform:translateX(20px)}
 .menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end}
 .sheet{background:var(--card);width:100%;border-radius:16px 16px 0 0;padding:10px 12px calc(14px + var(--safe-bot))}
 .sheet button{display:block;width:100%;text-align:left;padding:14px 12px;border-radius:10px;font-size:16px}
@@ -385,45 +397,163 @@ function render() {
     el("p", {}, "Clips you save on your PC show up here.")));
 }
 
+// ---------------------------------------------------------------- settings
+const PREFS = "greedy-clips-prefs";
+function prefs() { try { return Object.assign({convert: true}, JSON.parse(localStorage.getItem(PREFS)) || {}); } catch (e) { return {convert: true}; } }
+function setPref(k, v) { const p = prefs(); p[k] = v; try { localStorage.setItem(PREFS, JSON.stringify(p)); } catch (e) {} }
+function playsAV1() {
+  const v = document.createElement("video");
+  return !!(v.canPlayType('video/mp4; codecs="av01.0.12M.08"') || v.canPlayType('video/mp4; codecs="av01.0.08M.08"'));
+}
+function fmtSize(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB"; }
+
 // --------------------------------------------------------------------- viewer
-function view(c) {
-  const stage = el("div", {class: "stage"});
-  const dl = el("a", {href: saved.url + c.original + "&dl=1", download: c.title}, "Download original");
-  const box = el("div", {class: "viewer"},
-    el("div", {class: "vbar"}, el("button", {class: "icon-btn", onclick: () => close()}, "✕"), el("b", {}, c.title)),
-    stage, el("div", {class: "vfoot"}, dl));
-  const close = () => { clearTimeout(busyTimer); const v = stage.querySelector("video"); if (v) { v.pause(); v.removeAttribute("src"); v.load(); } box.remove(); };
-  document.body.append(box);
-  if (c.kind !== "video") {
-    stage.append(el("img", {src: saved.url + c.original, alt: c.title}));
+// Make (or find) the phone version on the PC; resolves when it's ready.
+function phoneVersion(c, onProgress, alive) {
+  return new Promise((resolve, reject) => {
+    const poll = async () => {
+      if (!alive()) return reject(new Error("closed"));
+      try {
+        const r = await api("/api/prepare/" + c.id, {method: "POST", ms: 15000});
+        const j = await r.json();
+        if (j.state === "ready") return resolve();
+        if (j.state === "failed") return reject(new Error("failed"));
+        onProgress(j.state, j.progress || 0);
+      } catch (e) { onProgress("lost", 0); }
+      busyTimer = setTimeout(poll, 1000);
+    };
+    poll();
+  });
+}
+
+// Save a file to the phone. iPhone: download it, then the share sheet (Save Video /
+// Save to Files) on the next tap, since iOS only opens it right after a tap.
+// Android and others: a normal download.
+async function saveFile(btn, url, name, type, size) {
+  if (!isIOS || !navigator.share) {
+    const a = el("a", {href: url + "&dl=1", rel: "noopener"});
+    document.body.append(a); a.click(); a.remove();
+    toast("Downloading " + name);
     return;
   }
-  const bar = el("i"); const label = el("span", {}, "Getting it ready for your phone...");
-  stage.append(el("div", {class: "prep"}, el("div", {class: "spin"}), label, el("div", {class: "progress"}, bar)));
-  const poll = async () => {
-    if (!box.isConnected) return;
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    const r = await timed(url, {}, 30 * 60 * 1000);
+    if (!r.ok) throw new Error("PC busy (" + r.status + ")");
+    const total = +r.headers.get("Content-Length") || size || 0;
+    const reader = r.body.getReader(); const parts = []; let got = 0;
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      parts.push(value); got += value.length;
+      btn.textContent = total ? "Downloading " + Math.round(got * 100 / total) + "%" : "Downloading " + fmtSize(got);
+    }
+    const file = new File(parts, name, {type});
+    btn.disabled = false;
+    btn.textContent = "Tap to save";
+    btn.classList.add("ready");
+    btn.onclick = async () => {
+      try { await navigator.share({files: [file]}); btn.textContent = "Saved"; }
+      catch (e) { if (e.name !== "AbortError") toast("Couldn't open the share sheet: " + e.message); }
+    };
+  } catch (e) {
+    btn.disabled = false; btn.textContent = label;
+    toast("Download failed: " + e.message + ". Try again.");
+  }
+}
+
+function view(c) {
+  const stage = el("div", {class: "stage"});
+  const foot = el("div", {class: "vfoot"});
+  const box = el("div", {class: "viewer"},
+    el("div", {class: "vbar"}, el("button", {class: "icon-btn", onclick: () => close()}, "✕"), el("b", {}, shortTitle(c))),
+    stage, foot);
+  let open = true;
+  const alive = () => open && box.isConnected;
+  const close = () => { open = false; clearTimeout(busyTimer); const v = stage.querySelector("video"); if (v) { v.pause(); v.removeAttribute("src"); v.load(); } box.remove(); };
+  document.body.append(box);
+  const fileName = c.file || c.title + ({image: ".png", gif: ".gif"}[c.kind] || ".mp4");
+  const imgType = /\.jpe?g$/i.test(fileName) ? "image/jpeg" : c.kind === "gif" ? "image/gif" : "image/png";
+
+  if (c.kind !== "video") {
+    stage.append(el("img", {src: saved.url + c.original, alt: c.title}));
+    const save = el("button", {}, "Save to phone");
+    save.onclick = () => saveFile(save, saved.url + c.original, fileName, imgType, c.size);
+    foot.append(save);
+    return;
+  }
+
+  // buttons: the phone version (small, plays everywhere) and the full-quality original
+  const savePhone = el("button", {}, "Save to phone");
+  savePhone.onclick = async () => {
+    savePhone.disabled = true;
     try {
-      const r = await api("/api/prepare/" + c.id, {method: "POST", ms: 15000});
-      const j = await r.json();
-      if (j.state === "ready") {
-        const v = el("video", {controls: "", playsinline: "", autoplay: "", preload: "auto", src: saved.url + c.play});
-        stage.replaceChildren(v);
-        return;
-      }
-      if (j.state === "failed") { label.textContent = "Couldn't make a phone version. You can still download the original."; return; }
-      bar.style.width = Math.round((j.progress || 0) * 100) + "%";
-      label.textContent = j.state === "queued" ? "Waiting for another clip to finish..." : "Getting it ready for your phone... " + Math.round((j.progress || 0) * 100) + "%";
-    } catch (e) { label.textContent = "Lost the connection to your PC. Retrying..."; }
-    busyTimer = setTimeout(poll, 1000);
+      await phoneVersion(c, (st, p) => { savePhone.textContent = "Preparing " + Math.round(p * 100) + "%"; }, alive);
+      savePhone.disabled = false; savePhone.textContent = "Save to phone";
+      saveFile(savePhone, saved.url + c.play, c.title + ".mp4", "video/mp4");
+    } catch (e) {
+      savePhone.disabled = false; savePhone.textContent = "Save to phone";
+      if (e.message !== "closed") toast("Couldn't make a phone version of this clip.");
+    }
   };
-  poll();
+  const saveOrig = el("button", {class: "ghost"}, "Original · " + fmtSize(c.size));
+  saveOrig.onclick = () => saveFile(saveOrig, saved.url + c.original, fileName,
+                                     /\.mkv$/i.test(fileName) ? "video/x-matroska" : "video/mp4", c.size);
+  foot.append(savePhone, saveOrig);
+
+  const playOriginal = () => {
+    const v = el("video", {controls: "", playsinline: "", autoplay: "", preload: "auto", src: saved.url + c.original});
+    v.addEventListener("error", () => {
+      stage.replaceChildren(el("div", {class: "prep"},
+        el("span", {}, "This phone can't play the original file (its format, like AV1 or MKV, isn't supported here)."),
+        el("button", {class: "big", onclick: playConverted}, "Play a phone version")));
+    });
+    stage.replaceChildren(v);
+  };
+  const playConverted = () => {
+    const bar = el("i"); const label = el("span", {}, "Getting it ready for your phone...");
+    stage.replaceChildren(el("div", {class: "prep"}, el("div", {class: "spin"}), label, el("div", {class: "progress"}, bar),
+      el("button", {class: "big ghost", onclick: playOriginal}, "Play the original now")));
+    phoneVersion(c, (st, p) => {
+      bar.style.width = Math.round(p * 100) + "%";
+      label.textContent = st === "queued" ? "Waiting for another clip to finish..." :
+        st === "lost" ? "Lost the connection to your PC. Retrying..." :
+        "Getting it ready for your phone... " + Math.round(p * 100) + "%";
+    }, alive).then(() => {
+      if (!alive()) return;
+      stage.replaceChildren(el("video", {controls: "", playsinline: "", autoplay: "", preload: "auto", src: saved.url + c.play}));
+    }).catch(e => {
+      if (e.message !== "closed") label.textContent = "Couldn't make a phone version. Try the original.";
+    });
+  };
+  (prefs().convert ? playConverted : playOriginal)();
+}
+
+function settings() {
+  const p = prefs();
+  const sw = el("input", {type: "checkbox", class: "switch"});
+  sw.checked = !!p.convert;
+  sw.addEventListener("change", () => { setPref("convert", sw.checked); toast(sw.checked ? "Videos play as a phone version" : "Videos play the original file"); });
+  const m = el("div", {class: "menu", onclick: e => { if (e.target === m) m.remove(); }},
+    el("div", {class: "sheet"},
+      el("div", {class: "sheet-title"}, "Settings"),
+      el("label", {class: "setting"},
+        el("div", {}, el("b", {}, "Convert videos for phone"),
+          el("span", {}, "On: plays smoothly on any connection; the first play of a clip takes a few seconds while your PC makes a lighter copy. " +
+                         "Off: plays the original file right away at full quality, but needs fast internet. " +
+                         (playsAV1() ? "This phone can play AV1 clips." : "This phone may not play AV1 clips; you can still switch to a phone version from the player."))),
+        sw),
+      el("button", {onclick: () => m.remove()}, "Done")));
+  document.body.append(m);
 }
 
 // ----------------------------------------------------------------------- menu
 function menu() {
   const m = el("div", {class: "menu", onclick: e => { if (e.target === m) m.remove(); }},
     el("div", {class: "sheet"},
-      el("div", {class: "note"}, "Paired with " + saved.pc + ". Only this phone can see these clips; remove it anytime in Greedy Clips > Settings > Phone app."),
+      el("div", {class: "note"}, "Paired with " + saved.pc + ". Only this phone can see these clips; remove it anytime in Greedy Clips > ••• > Phone app."),
+      el("button", {onclick: () => { m.remove(); settings(); }}, "Settings"),
       el("button", {onclick: () => { m.remove(); scan(); }}, "Pair with a new QR code"),
       el("button", {class: "danger", onclick: async () => {
         if (!confirm("Unpair this phone? You'll need a new QR code from your PC to see your clips again.")) return;
