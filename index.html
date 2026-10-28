@@ -35,11 +35,16 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .tab{flex:none;padding:7px 13px;border-radius:999px;background:var(--card);color:var(--dim);font-size:14px;white-space:nowrap}
 .tab.on{background:var(--accent);color:#fff}
 .tab small{opacity:.75;margin-left:4px}
-select.game{width:100%;margin:0 0 10px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);
-background:var(--card);color:var(--text);font:inherit}
+.games{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.games::-webkit-scrollbar{display:none}
+.game{flex:none;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;
+color:var(--text);font-size:14px;font-weight:600;white-space:nowrap}
+.game.on{border-color:var(--accent);background:rgba(229,72,77,.14)}
+.game small{color:var(--dim);font-weight:400;margin-left:6px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:14px 16px}
 .clip{background:var(--card);border-radius:12px;overflow:hidden;text-align:left;width:100%}
 .thumb{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .len{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.75);border-radius:5px;padding:1px 6px;font-size:12px}
 .star{position:absolute;left:6px;top:4px;color:#ffd166;font-size:15px;text-shadow:0 1px 3px #000}
 .meta{padding:8px 10px 10px}
@@ -229,11 +234,15 @@ async function scan() {
 
 // ------------------------------------------------------------ finding the PC
 async function findPC() {
-  try {                                   // the address it used last time
-    const r = await api("/api/ping", {ms: 7000});
-    if (r.status === 401) return "removed";
-    if (r.ok) return "ok";
-  } catch (e) {}
+  for (let i = 0; i < 3; i++) {           // the address it used last time (busy PC: retry)
+    try {
+      const r = await api("/api/ping", {ms: 12000});
+      if (r.status === 401) return "removed";
+      if (r.ok) return "ok";
+      if (r.status === 404 || r.status === 530) break;   // that link is gone: look it up
+    } catch (e) {}
+    await new Promise(ok => setTimeout(ok, 1500));
+  }
   try {                                   // the PC posts its current address here
     const r = await timed(NTFY + encodeURIComponent(saved.topic) + "/json?poll=1&since=latest", {}, 8000);
     const lines = (await r.text()).trim().split("\n").filter(Boolean);
@@ -287,8 +296,9 @@ async function openLibrary() {
 // -------------------------------------------------------------------- library
 async function refresh() {
   try {
-    const r = await api("/api/clips", {ms: 20000});
+    const r = await api("/api/clips", {ms: 30000});
     if (r.status === 401) { store(null); return start(); }
+    if (!r.ok) throw new Error("PC busy (" + r.status + ")");
     const j = await r.json();
     clips = j.clips || [];
     if (j.pc && j.pc !== saved.pc) store(Object.assign({}, saved, {pc: j.pc}));
@@ -300,6 +310,12 @@ async function refresh() {
     if (missing && refresh.tries <= 5 && !document.querySelector(".viewer"))
       refresh.later = setTimeout(quietRefresh, 3000);
   } catch (e) {
+    // already showing clips: keep them and try again quietly instead of saying "offline"
+    if (clips.length && document.querySelector(".grid")) {
+      clearTimeout(refresh.later);
+      refresh.later = setTimeout(quietRefresh, 5000);
+      return;
+    }
     openLibrary();
   }
 }
@@ -342,9 +358,10 @@ function render() {
       el("div", {class: "pc"}, el("b", {}, saved.pc), el("span", {}, clips.length + " clips · private to this phone")),
       el("button", {class: "icon-btn", "aria-label": "Refresh", onclick: refresh}, "⟳"),
       el("button", {class: "icon-btn", "aria-label": "More", onclick: menu}, "•••")),
-    games.length > 1 ? el("select", {class: "game", onchange: e => { game = e.target.value; render(); }},
-      el("option", {value: "All"}, "All games"),
-      games.map(g => { const o = el("option", {value: g}, g); if (g === game) o.selected = true; return o; })) : null,
+    games.length > 1 ? el("div", {class: "games"},
+      [["All", "All games", clips.length], ...games.map(g => [g, g, clips.filter(c => c.game === g).length])]
+        .map(([key, label, n]) => el("button", {class: "game" + (key === game ? " on" : ""),
+          onclick: () => { game = key; render(); window.scrollTo(0, 0); }}, label, el("small", {}, n)))) : null,
     tabs.length ? el("div", {class: "tabs"}, tabs.map(t => el("button", {
       class: "tab" + (t === tab ? " on" : ""), onclick: () => { tab = t; render(); }}, t, el("small", {}, counts[t])))) : null);
 
@@ -354,7 +371,11 @@ function render() {
     const day = fmtDay(c.date);
     if (day !== lastDay) { grid.append(el("div", {class: "day"}, day)); lastDay = day; }
     const th = el("div", {class: "thumb"});
-    th.style.backgroundImage = `url("${saved.url}${c.thumb}")`;
+    const img = el("img", {src: saved.url + c.thumb, loading: "lazy", decoding: "async", alt: ""});
+    img.addEventListener("error", () => {      // the PC was busy: ask once more a bit later
+      if (!img.dataset.retried) { img.dataset.retried = "1"; setTimeout(() => { img.src = saved.url + c.thumb + "&r=1"; }, 2500); }
+    });
+    th.append(img);
     if (c.length) th.append(el("span", {class: "len"}, fmtLen(c.length)));
     if (c.favorite) th.append(el("span", {class: "star"}, "★"));
     grid.append(el("button", {class: "clip", onclick: () => view(c)}, th,
