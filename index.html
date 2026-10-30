@@ -293,7 +293,132 @@ async function timed(url, opts, ms) {
 function api(path, opts) {
   opts = opts || {};
   opts.headers = Object.assign({Authorization: "Bearer " + saved.token}, opts.headers || {});
+  if (direct.state === "on" && !path.startsWith("/api/direct/")) {
+    return dfetch(path, opts).catch(e => {
+      if (e.name === "AbortError") throw e;
+      directLost();                                  // swap back to the internet link
+      return timed(saved.url + path, opts, opts.ms);
+    });
+  }
   return timed(saved.url + path, opts, opts.ms);
+}
+
+// ---------------------------------------------------- home Wi-Fi direct link
+// On the same network as the PC, the app connects straight to it (encrypted, like a
+// video call) and loads videos and thumbnails from it at full Wi-Fi speed. Anywhere
+// else this simply doesn't connect and everything goes over the internet link.
+const direct = {state: "off", pc: null, retry: null};
+let swReady = false;
+
+function directMedia(path) {            // a video / picture address, direct when possible
+  return direct.state === "on" && swReady ? "d" + path : saved.url + path;
+}
+
+async function tryDirect() {
+  if (!saved || !window.RTCPeerConnection || direct.state !== "off" || document.hidden) return;
+  direct.state = "trying";
+  let pc = null;
+  try {
+    pc = new RTCPeerConnection({iceServers: []});            // home network only
+    const ctl = pc.createDataChannel("ctl");
+    const opened = new Promise(ok => { ctl.onopen = ok; });
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise(ok => {
+      if (pc.iceGatheringState === "complete") return ok();
+      pc.addEventListener("icegatheringstatechange", () => pc.iceGatheringState === "complete" && ok());
+      setTimeout(ok, 2500);
+    });
+    const j = await apiJSON("/api/direct/offer", {sdp: pc.localDescription.sdp}, 15000);
+    await pc.setRemoteDescription({type: "answer", sdp: j.sdp});
+    await Promise.race([opened, new Promise((_, bad) => setTimeout(() => bad(new Error("not on the same network")), 7000))]);
+    direct.pc = pc; direct.state = "on";
+    pc.addEventListener("connectionstatechange", () => {
+      if (["failed", "disconnected", "closed"].includes(pc.connectionState)) directLost();
+    });
+    ctl.onclose = () => directLost();
+    paintStatusLine();
+    document.querySelectorAll(".thumb img").forEach(img => {   // faster thumbnails from now on
+      if (img.dataset.path && !img.complete) img.src = directMedia(img.dataset.path);
+    });
+  } catch (e) {
+    try { pc && pc.close(); } catch (_) {}
+    direct.state = "off";
+    clearTimeout(direct.retry);
+    direct.retry = setTimeout(tryDirect, 60000);           // walked into the house later?
+  }
+}
+
+function directLost() {
+  if (direct.state !== "on") return;
+  const pc = direct.pc;
+  direct.state = "off"; direct.pc = null;
+  try { pc.close(); } catch (_) {}
+  paintStatusLine();
+  clearTimeout(direct.retry);
+  direct.retry = setTimeout(tryDirect, 15000);
+}
+
+// One request over the direct link (its own channel); returns a normal Response.
+function dfetch(path, opts) {
+  opts = opts || {};
+  return new Promise((resolve, reject) => {
+    const label = {m: opts.method || "GET", p: path, h: opts.headers || {}};
+    if (typeof opts.body === "string") label.b = opts.body;
+    let ch;
+    try { ch = direct.pc.createDataChannel(JSON.stringify(label)); } catch (e) { return reject(e); }
+    ch.binaryType = "arraybuffer";
+    let ctrl = null, got = false, ended = false;
+    const stream = new ReadableStream({start(c) { ctrl = c; }, cancel() { try { ch.close(); } catch (_) {} }});
+    const timer = setTimeout(() => { if (!got) { try { ch.close(); } catch (_) {} reject(new Error("direct link timed out")); } }, opts.ms || 15000);
+    ch.onmessage = e => {
+      if (typeof e.data === "string") {
+        if (e.data === "end") { ended = true; try { ctrl.close(); } catch (_) {} try { ch.close(); } catch (_) {} return; }
+        const h = JSON.parse(e.data); got = true; clearTimeout(timer);
+        const empty = h.s === 204 || h.s === 304 || label.m === "HEAD";
+        resolve(new Response(empty ? null : stream, {status: h.s, headers: h.h || {}}));
+      } else {
+        try { ctrl.enqueue(new Uint8Array(e.data)); } catch (_) {}
+      }
+    };
+    ch.onclose = () => {
+      clearTimeout(timer);
+      if (!got) reject(new Error("direct link closed"));
+      else if (!ended) { try { ctrl.error(new Error("direct link lost")); } catch (_) {} }
+    };
+    if (opts.signal) opts.signal.addEventListener("abort", () => {
+      try { ch.close(); } catch (_) {}
+      if (!got) reject(new DOMException("Aborted", "AbortError"));
+    });
+  });
+}
+
+// the background worker (sw.js) asks the page for video / picture bytes
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => {
+    swReady = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { swReady = true; });
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener("message", e => {
+    const m = e.data, port = e.ports && e.ports[0];
+    if (!m || m.type !== "direct-fetch" || !port) return;
+    if (direct.state !== "on") return port.postMessage({type: "fail"});
+    const ac = new AbortController();
+    port.onmessage = ev => { if (ev.data === "cancel") ac.abort(); };
+    const headers = m.range ? {Range: m.range} : {};
+    dfetch(m.path, {headers, signal: ac.signal, ms: 15000, method: m.method === "HEAD" ? "HEAD" : "GET"}).then(async r => {
+      const h = {}; r.headers.forEach((v, k) => { h[k] = v; });
+      port.postMessage({type: "head", status: r.status, headers: h});
+      if (!r.body) return port.postMessage({type: "end"});
+      const rd = r.body.getReader();
+      for (;;) {
+        const {done, value} = await rd.read();
+        if (done) break;
+        const buf = value.byteOffset === 0 && value.byteLength === value.buffer.byteLength ? value.buffer : value.slice().buffer;
+        port.postMessage({type: "data", chunk: buf}, [buf]);
+      }
+      port.postMessage({type: "end"});
+    }).catch(() => port.postMessage({type: "fail"}));
+  });
 }
 async function apiJSON(path, body, ms) {
   const r = await api(path, {method: "POST", ms: ms || 15000, headers: {"Content-Type": "application/json"},
@@ -444,6 +569,7 @@ async function openLibrary() {
       el("button", {class: "big ghost", onclick: menu}, "More"));
   }
   await refresh();
+  tryDirect();
 }
 
 // -------------------------------------------------------------------- library
@@ -514,6 +640,7 @@ document.addEventListener("visibilitychange", () => {
   } else if (saved && document.querySelector(".top")) {
     loadStatus().then(() => { paintTop(); startStatus(); });
     quietRefresh();
+    tryDirect();                                             // back home? go direct again
   }
 });
 
@@ -550,6 +677,10 @@ function sorted(list) {
 }
 
 function statusText() {
+  const home = direct.state === "on" ? " · Home Wi-Fi" : "";
+  return baseStatus() + home;
+}
+function baseStatus() {
   if (!status) return "Connected";
   if (status.recording) return "Recording " + fmtLen(status.recording_seconds + Math.floor((Date.now() - status.at) / 1000) || 0.1);
   if (status.replay_on) return "Instant Replay on" + (status.replay_seconds ? " · last " + fmtLen(status.replay_seconds).replace(/:00$/, " min") : "");
@@ -667,7 +798,7 @@ function render() {
 
 function card(c) {
   const th = el("div", {class: "thumb"});
-  const img = el("img", {src: saved.url + c.thumb, loading: "lazy", decoding: "async", alt: ""});
+  const img = el("img", {src: directMedia(c.thumb), "data-path": c.thumb, loading: "lazy", decoding: "async", alt: ""});
   img.addEventListener("error", () => {      // the PC was busy: ask once more a bit later
     if (!img.dataset.retried) { img.dataset.retried = "1"; setTimeout(() => { img.src = saved.url + c.thumb + "&r=1"; }, 2500); }
   });
@@ -867,7 +998,10 @@ async function saveFile(btn, url, name, type, size, signal) {
   const text = t => { btn.lastChild.textContent = t; };
   btn.disabled = true;
   try {
-    const r = await timed(url, {signal}, 30 * 60 * 1000);
+    const path = url.startsWith(saved.url) ? url.slice(saved.url.length) : null;
+    const r = direct.state === "on" && path
+      ? await dfetch(path, {signal, ms: 30000}).catch(() => timed(url, {signal}, 30 * 60 * 1000))
+      : await timed(url, {signal}, 30 * 60 * 1000);
     if (!r.ok) throw new Error("PC busy (" + r.status + ")");
     const total = +r.headers.get("Content-Length") || size || 0;
     const reader = r.body.getReader(); const parts = []; let got = 0;
@@ -893,8 +1027,33 @@ async function saveFile(btn, url, name, type, size, signal) {
 
 // A video player with our own controls: tapping the video always plays/pauses, with a
 // seek bar, and trim handles when trimming (like the PC player).
-function player(src) {
+function player(path) {
+  // media playback sound (shared in FaceTime screen sharing, plays in silent mode)
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}
+  const src = directMedia(path);
   const video = el("video", {playsinline: true, "webkit-playsinline": true, autoplay: true, preload: "auto", src});
+  if (src !== saved.url + path) {
+    // over the direct link: if it drops (left home), carry on over the internet link
+    video.addEventListener("error", async ev => {
+      if (video.dataset.swapped || video.dataset.final) return;
+      ev.stopImmediatePropagation();
+      const at = video.currentTime || 0, playing = !video.paused;
+      let linkOk = false;                      // the link dropped, or the format isn't playable?
+      try { linkOk = direct.state === "on" && (await dfetch("/api/ping", {headers: {Authorization: "Bearer " + saved.token}, ms: 3000})).ok; } catch (_) {}
+      if (linkOk) {                            // the link is fine: it's the format
+        video.dataset.final = "1";
+        video.dispatchEvent(new Event("error"));
+        return;
+      }
+      video.dataset.swapped = "1";             // left home: carry on over the internet link
+      directLost();
+      video.src = saved.url + path;
+      video.addEventListener("loadedmetadata", () => {
+        try { video.currentTime = at; } catch (_) {}
+        if (playing) video.play().catch(() => {});
+      }, {once: true});
+    });
+  }
   const big = el("button", {class: "pl-big", "aria-label": "Play"}, icon("play"));
   const btn = el("button", {class: "pl-btn", "aria-label": "Play/pause"}, icon("pause"));
   const cur = el("span", {class: "pl-time"}, "0:00");
@@ -1029,7 +1188,8 @@ function view(c, opts) {
   const imgType = /\.jpe?g$/i.test(fileName) ? "image/jpeg" : c.kind === "gif" ? "image/gif" : "image/png";
 
   if (c.kind !== "video") {
-    stage.append(el("img", {src: saved.url + c.original, alt: c.title}));
+    stage.append(el("img", {src: directMedia(c.original), alt: c.title,
+      onerror: e => { if (!e.target.dataset.retried) { e.target.dataset.retried = "1"; e.target.src = saved.url + c.original; } }}));
     const save = el("button", {class: "main"}, icon("download"), el("span", {}, "Download to device"));
     save.onclick = () => saveFile(save, saved.url + c.original, fileName, imgType, c.size, aborter.signal);
     foot.append(save);
@@ -1085,7 +1245,7 @@ function view(c, opts) {
   normalFoot();
 
   const playOriginal = () => {
-    pl = player(saved.url + c.original);
+    pl = player(c.original);
     pl.video.addEventListener("error", () => {
       pl = null;
       stage.replaceChildren(el("div", {class: "prep"},
@@ -1105,7 +1265,7 @@ function view(c, opts) {
         "Getting it ready for your phone... " + Math.round(p * 100) + "%";
     }, alive).then(() => {
       if (!alive()) return;
-      pl = player(saved.url + c.play);
+      pl = player(c.play);
       stage.replaceChildren(pl.box);
     }).catch(e => {
       if (e.message !== "closed") label.textContent = "Couldn't make a phone version. Try the original.";
