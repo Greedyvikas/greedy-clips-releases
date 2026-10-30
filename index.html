@@ -921,6 +921,17 @@ async function deleteClip(c, after) {
 const PREFS = "greedy-clips-prefs";
 function prefs() { try { return Object.assign({convert: true}, JSON.parse(localStorage.getItem(PREFS)) || {}); } catch (e) { return {convert: true}; } }
 function setPref(k, v) { const p = prefs(); p[k] = v; try { localStorage.setItem(PREFS, JSON.stringify(p)); } catch (e) {} }
+function canPlayHLS() {             // iPhone/iPad (and some Android): plays pieces as made
+  return !!document.createElement("video").canPlayType("application/vnd.apple.mpegurl");
+}
+function canPlayOriginal(c) {       // can this phone play the clip file as it is?
+  if (c.container !== "mp4") return false;
+  const v = document.createElement("video");
+  if (c.vcodec === "h264") return true;
+  if (c.vcodec === "hevc") return c.vtag === "hvc1" && !!v.canPlayType('video/mp4; codecs="hvc1.1.6.L153.B0"');
+  if (c.vcodec === "av1") return playsAV1();
+  return false;
+}
 function playsAV1() {
   const v = document.createElement("video");
   return !!(v.canPlayType('video/mp4; codecs="av01.0.12M.08"') || v.canPlayType('video/mp4; codecs="av01.0.08M.08"'));
@@ -1027,10 +1038,10 @@ async function saveFile(btn, url, name, type, size, signal) {
 
 // A video player with our own controls: tapping the video always plays/pauses, with a
 // seek bar, and trim handles when trimming (like the PC player).
-function player(path) {
+function player(path, opts) {
   // media playback sound (shared in FaceTime screen sharing, plays in silent mode)
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}
-  const src = directMedia(path);
+  const src = opts && opts.internet ? saved.url + path : directMedia(path);
   const video = el("video", {playsinline: true, "webkit-playsinline": true, autoplay: true, preload: "auto", src});
   if (src !== saved.url + path) {
     // over the direct link: if it drops (left home), carry on over the internet link
@@ -1258,20 +1269,41 @@ function view(c, opts) {
     const bar = el("i"); const label = el("span", {}, "Getting it ready for your phone...");
     stage.replaceChildren(el("div", {class: "prep"}, el("div", {class: "spin"}), label, el("div", {class: "progress"}, bar),
       el("button", {class: "big ghost", onclick: playOriginal}, "Play the original now")));
-    phoneVersion(c, (st, p) => {
-      bar.style.width = Math.round(p * 100) + "%";
-      label.textContent = st === "queued" ? "Waiting for another clip to finish..." :
-        st === "lost" ? "Lost the connection to your PC. Retrying..." :
-        "Getting it ready for your phone... " + Math.round(p * 100) + "%";
-    }, alive).then(() => {
-      if (!alive()) return;
-      pl = player(c.play);
+    const hls = canPlayHLS();
+    let started = false;
+    const start = p => {
+      if (started || !alive()) return;
+      started = true;
+      pl = player(p, {internet: p === c.hls});   // pieces stream over the internet link
       stage.replaceChildren(pl.box);
-    }).catch(e => {
-      if (e.message !== "closed") label.textContent = "Couldn't make a phone version. Try the original.";
-    });
+    };
+    // Ask the PC for the phone version; with HLS, start playing the first pieces right
+    // away while the PC makes the rest. The phone keeps asking while you watch; when
+    // you close the video it stops asking and the PC stops working on it.
+    const poll = async () => {
+      if (!alive()) return;
+      try {
+        const r = await api("/api/prepare/" + c.id, {method: "POST", ms: 15000});
+        const j = await r.json();
+        if (j.state === "ready") {
+          if (!started) start(hls && j.hls ? c.hls : c.play);
+          return;                                         // done: nothing more to ask
+        }
+        if (j.state === "failed") { if (!started) label.textContent = "Couldn't make a phone version. Try the original."; return; }
+        if (hls && j.hls) start(c.hls);
+        if (!started) {
+          bar.style.width = Math.round((j.progress || 0) * 100) + "%";
+          label.textContent = j.state === "queued" ? "Waiting for another clip to finish..." :
+            "Getting it ready for your phone... " + Math.round((j.progress || 0) * 100) + "%";
+        }
+      } catch (e) { if (!started) label.textContent = "Lost the connection to your PC. Retrying..."; }
+      busyTimer = setTimeout(poll, started ? 2000 : 700);
+    };
+    poll();
   };
-  (prefs().convert ? playConverted : playOriginal)();
+  // at home and the phone can play the clip as it is: straight from the PC, full quality
+  if (direct.state === "on" && canPlayOriginal(c)) playOriginal();
+  else (prefs().convert ? playConverted : playOriginal)();
   if (opts.download) save.click();
 }
 
